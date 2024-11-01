@@ -302,12 +302,11 @@ def display_unit_process_trends(scores_over_time, formatted_unit_process_names):
             if any(not np.isnan(s) for s in scores):
                 process_df = pd.DataFrame({
                     'Date': scores_over_time['dates'],
-                    'Score': [s * 100 if not np.isnan(s) else None for s in scores
-                ]
+                    'Score': [s * 100 if not np.isnan(s) else None for s in scores]
                 }).dropna()
                 if not process_df.empty:
                     st.subheader(process_name)
-                    fig = px.line(process_df,  x='Date',  y='Score',  labels={'Score': 'Score (%)'})
+                    fig = px.line(process_df, x='Date', y='Score', labels={'Score': 'Score (%)'})
                     st.plotly_chart(fig, use_container_width=True)
 
 def display_data_completeness(data_completeness):
@@ -406,7 +405,7 @@ def display_data_query(ml_data):
                 data_range = smoothed_data[feature].max() - smoothed_data[feature].min()
                 max_range[feature] = data_range
             # Determine if we need a secondary y-axis
-            if len(selected_features) >= 2 and max(max_range.values()) / min(max_range.values()) > 10:
+            if len(selected_features) >= 2 and min(max_range.values()) > 0 and max(max_range.values()) / min(max_range.values()) > 10:
                 # Use secondary y-axis
                 first_feature = selected_features[0]
                 other_features = selected_features[1:]
@@ -458,17 +457,49 @@ def display_data_query(ml_data):
                     legend_title='Features'
                 )
             st.plotly_chart(fig, use_container_width=True)
-            
-            #Create a CSV download button for the queried data
-            csv = smoothed_data.to_csv(index=False).encode('utf-8')
 
+            # Create CSV download with additional sections
+            # Section 1: Summary of Metrics
+            summary_info = {}
+            summary_info['Date Range'] = f"{query_data['date'].min().date()} to {query_data['date'].max().date()}"
+            summary_info['Total Record Count'] = len(query_data)
+
+            # Calculate overall summary metrics
+            overall_metrics = query_data[selected_features].agg(['sum', 'mean', 'count', 'std', 'min', 'max']).round(2)
+
+            # Prepare CSV content
+            csv_content = []
+
+            # Add Summary Section
+            csv_content.append("Summary of Metrics")
+            for key, value in summary_info.items():
+                csv_content.append(f"{key}, {value}")
+            csv_content.append("")  # Empty line for separation
+
+            # Add Detailed Calculations Section
+            csv_content.append("Detailed Calculations")
+            # Transpose overall_metrics for better formatting
+            overall_metrics_transposed = overall_metrics.T
+            overall_metrics_transposed.index.name = 'Feature'
+            overall_metrics_transposed.reset_index(inplace=True)
+            csv_content.append(overall_metrics_transposed.to_csv(index=False))
+            csv_content.append("")  # Empty line for separation
+
+            # Add Raw Data Section
+            csv_content.append("Raw Data")
+            csv_content.append(query_data[['date'] + selected_features].to_csv(index=False))
+
+            # Combine all parts into a single CSV string
+            csv_data = '\n'.join(csv_content).encode('utf-8')
+
+            # Download Button
             st.download_button(
                 label="Download Queried Data as CSV",
-                data=csv,
-                file_name='queried_data.csv',
+                data=csv_data,
+                file_name='queried_data_with_metrics.csv',
                 mime='text/csv'
             )
-        
+
 def display_recent_complete_day_summary(ml_data):
     st.header("Recent Complete Day Summary")
     key_features = ['d2_ph', 'd3_ph', 'mlss', 'sbd', 'eff_flow']
