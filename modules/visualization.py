@@ -140,6 +140,12 @@ def display_gauge(value, title, key, thresholds=None):
 def display_time_series(scores_over_time):
     st.header("12-Month Performance Trends")
 
+    # Check if scores_over_time is a dictionary
+    if not isinstance(scores_over_time, dict):
+        st.error("Error: 'scores_over_time' should be a dictionary.")
+        st.write(f"Received type: {type(scores_over_time)}")
+        return
+
     # Check if scores_over_time has the required keys
     required_keys = ['dates', 'overall_scores', 'difficulty_scores', 'adjusted_scores']
     if not all(key in scores_over_time for key in required_keys):
@@ -147,68 +153,50 @@ def display_time_series(scores_over_time):
         st.write("Available keys:", list(scores_over_time.keys()))
         return
 
-    # Ensure that the lists are not empty and have equal lengths
+    # Extract data
     dates = scores_over_time['dates']
     overall_scores = scores_over_time['overall_scores']
     difficulty_scores = scores_over_time['difficulty_scores']
     adjusted_scores = scores_over_time['adjusted_scores']
 
-    if not dates or not overall_scores or not difficulty_scores or not adjusted_scores:
-        st.warning("No data available to display.")
-        return
-
-    if not (len(dates) == len(overall_scores) == len(difficulty_scores) == len(adjusted_scores)):
+    # Ensure that the lists are of equal length
+    lengths = [len(dates), len(overall_scores), len(difficulty_scores), len(adjusted_scores)]
+    if len(set(lengths)) != 1:
         st.error("Data length mismatch: The lists in 'scores_over_time' must have the same length.")
-        st.write("Lengths:",
-                 f"dates: {len(dates)}",
-                 f"overall_scores: {len(overall_scores)}",
-                 f"difficulty_scores: {len(difficulty_scores)}",
-                 f"adjusted_scores: {len(adjusted_scores)}")
+        st.write("Lengths:", dict(zip(required_keys, lengths)))
         return
 
-    # Create the DataFrame
+    # Create DataFrame
     trend_df = pd.DataFrame({
         'Date': dates,
-        'Overall Plant Score': [
-            s * 100 if s is not None and not pd.isna(s) else None for s in overall_scores
-        ],
-        'Difficulty Score': [
-            s * 100 if s is not None and not pd.isna(s) else None for s in difficulty_scores
-        ],
-        'Adjusted Performance Score': [
-            s * 100 if s is not None and not pd.isna(s) else None for s in adjusted_scores
-        ]
+        'Overall Plant Score': overall_scores,
+        'Difficulty Score': difficulty_scores,
+        'Adjusted Performance Score': adjusted_scores
     })
 
     # Convert 'Date' column to datetime
     trend_df['Date'] = pd.to_datetime(trend_df['Date'], errors='coerce')
-
-    # Remove rows with invalid dates
     trend_df.dropna(subset=['Date'], inplace=True)
 
-    # Drop rows where all scores are NaN
-    trend_df.dropna(subset=[
-        'Overall Plant Score',
-        'Difficulty Score',
-        'Adjusted Performance Score'
-    ], how='all', inplace=True)
+    # Convert scores to percentages
+    score_columns = ['Overall Plant Score', 'Difficulty Score', 'Adjusted Performance Score']
+    for col in score_columns:
+        trend_df[col] = pd.to_numeric(trend_df[col], errors='coerce') * 100
 
-    # Ensure that the DataFrame is not empty
+    # Drop rows where all scores are NaN
+    trend_df.dropna(subset=score_columns, how='all', inplace=True)
+
+    # Ensure DataFrame is not empty
     if trend_df.empty:
         st.warning("No valid data available to plot.")
         return
 
-    # Ensure that score columns are numeric
-    score_columns = ['Overall Plant Score', 'Difficulty Score', 'Adjusted Performance Score']
-    for col in score_columns:
-        trend_df[col] = pd.to_numeric(trend_df[col], errors='coerce')
-
-    # Sort by 'Date'
+    # Sort DataFrame by 'Date'
     trend_df.sort_values('Date', inplace=True)
 
     # Debug: Show the DataFrame
-    st.write("Trend DataFrame Preview:")
-    st.write(trend_df.head())
+    st.write("Trend DataFrame:")
+    st.dataframe(trend_df)
     st.write("Data Types:")
     st.write(trend_df.dtypes)
 
@@ -234,41 +222,47 @@ def display_scatter_performance_difficulty(
     st.header("Performance Relative to Historical Difficulty Levels")
 
     # Check if required data is available
-    if not scores_over_time.get('dates') or not scores_over_time.get('overall_scores') or not scores_over_time.get('difficulty_scores'):
-        st.warning("Insufficient data to display the scatter plot.")
+    required_keys = ['dates', 'overall_scores', 'difficulty_scores']
+    if not all(key in scores_over_time for key in required_keys):
+        st.error("Incomplete data: Missing required keys in 'scores_over_time'.")
         return
 
+    # Extract data
     dates = scores_over_time['dates']
     overall_scores = scores_over_time['overall_scores']
     difficulty_scores = scores_over_time['difficulty_scores']
 
-    # Ensure that the lists have equal lengths
-    if not (len(dates) == len(overall_scores) == len(difficulty_scores)):
-        st.error("Data length mismatch: The lists in 'scores_over_time' must have the same length.")
+    # Ensure that the lists are of equal length
+    lengths = [len(dates), len(overall_scores), len(difficulty_scores)]
+    if len(set(lengths)) != 1:
+        st.error("Data length mismatch in 'scores_over_time'.")
+        st.write("Lengths:", dict(zip(required_keys, lengths)))
         return
 
+    # Create DataFrame
     scatter_df = pd.DataFrame({
         'Date': dates,
-        'Overall Plant Score': [
-            s * 100 if s is not None and not pd.isna(s) else None for s in overall_scores
-        ],
-        'Difficulty Score': [
-            s * 100 if s is not None and not pd.isna(s) else None for s in difficulty_scores
-        ]
+        'Overall Plant Score': overall_scores,
+        'Difficulty Score': difficulty_scores
     })
 
     # Convert 'Date' column to datetime
     scatter_df['Date'] = pd.to_datetime(scatter_df['Date'], errors='coerce')
     scatter_df.dropna(subset=['Date'], inplace=True)
 
-    # Drop rows with NaN values in scores
-    scatter_df.dropna(subset=['Overall Plant Score', 'Difficulty Score'], how='any', inplace=True)
+    # Convert scores to percentages
+    scatter_df['Overall Plant Score'] = pd.to_numeric(scatter_df['Overall Plant Score'], errors='coerce') * 100
+    scatter_df['Difficulty Score'] = pd.to_numeric(scatter_df['Difficulty Score'], errors='coerce') * 100
 
+    # Drop rows with NaN values in scores
+    scatter_df.dropna(subset=['Overall Plant Score', 'Difficulty Score'], inplace=True)
+
+    # Ensure DataFrame is not empty
     if scatter_df.empty:
         st.warning("No valid data available to plot.")
         return
 
-    # Plot the scatter plot
+    # Plotting
     try:
         fig = px.scatter(
             scatter_df,
@@ -283,17 +277,11 @@ def display_scatter_performance_difficulty(
         )
 
         # Highlight current performance
-        current_difficulty_score = (
-            difficulty_score * 100 if difficulty_score is not None and not pd.isna(difficulty_score) else None
-        )
-        current_overall_score = (
-            plant_performance_score * 100 if plant_performance_score is not None and not pd.isna(plant_performance_score) else None
-        )
-        if current_difficulty_score is not None and current_overall_score is not None:
+        if plant_performance_score is not None and difficulty_score is not None:
             fig.add_trace(
                 go.Scatter(
-                    x=[current_difficulty_score],
-                    y=[current_overall_score],
+                    x=[difficulty_score * 100],
+                    y=[plant_performance_score * 100],
                     mode='markers',
                     marker=dict(color='red', size=12),
                     name='Current Performance'
@@ -401,14 +389,15 @@ def display_unit_process_trends(scores_over_time, formatted_unit_process_names):
 
                 process_df = pd.DataFrame({
                     'Date': dates,
-                    'Score': [s * 100 if s is not None and not pd.isna(s) else None for s in scores]
+                    'Score': scores
                 })
 
                 # Convert 'Date' column to datetime
                 process_df['Date'] = pd.to_datetime(process_df['Date'], errors='coerce')
                 process_df.dropna(subset=['Date'], inplace=True)
 
-                # Drop rows with NaN scores
+                # Convert scores to percentages
+                process_df['Score'] = pd.to_numeric(process_df['Score'], errors='coerce') * 100
                 process_df.dropna(subset=['Score'], inplace=True)
 
                 if not process_df.empty:
@@ -529,52 +518,8 @@ def display_data_query(ml_data):
                 return
 
             # Plot the selected features
-            fig = go.Figure()
-            max_range = {}
-            for idx, feature in enumerate(selected_features):
-                data_range = smoothed_data[feature].max() - smoothed_data[feature].min()
-                max_range[feature] = data_range
-
-            # Determine if we need a secondary y-axis
-            if len(selected_features) >= 2 and min(max_range.values()) > 0 and max(max_range.values()) / min(max_range.values()) > 10:
-                # Use secondary y-axis
-                first_feature = selected_features[0]
-                other_features = selected_features[1:]
-
-                fig.add_trace(go.Scatter(
-                    x=smoothed_data['date'],
-                    y=smoothed_data[first_feature],
-                    name=first_feature.replace('_', ' ').title(),
-                    yaxis='y1'
-                ))
-                for feature in other_features:
-                    fig.add_trace(go.Scatter(
-                        x=smoothed_data['date'],
-                        y=smoothed_data[feature],
-                        name=feature.replace('_', ' ').title(),
-                        yaxis='y2'
-                    ))
-                # Create axis objects
-                fig.update_layout(
-                    yaxis=dict(
-                        title=first_feature.replace('_', ' ').title(),
-                        titlefont=dict(color='blue'),
-                        tickfont=dict(color='blue')
-                    ),
-                    yaxis2=dict(
-                        title='Other Features',
-                        titlefont=dict(color='red'),
-                        tickfont=dict(color='red'),
-                        anchor='x',
-                        overlaying='y',
-                        side='right'
-                    ),
-                    xaxis_title='Date',
-                    title='Feature Trends Over Time',
-                    legend_title='Features'
-                )
-            else:
-                # All features on the same y-axis
+            try:
+                fig = go.Figure()
                 for feature in selected_features:
                     fig.add_trace(go.Scatter(
                         x=smoothed_data['date'],
@@ -587,7 +532,10 @@ def display_data_query(ml_data):
                     title='Feature Trends Over Time',
                     legend_title='Features'
                 )
-            st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, use_container_width=True)
+            except Exception as e:
+                st.error(f"An error occurred while plotting the data: {e}")
+                st.write("Please check the selected features for inconsistencies.")
 
             # Create a CSV download button for the queried data
             csv = smoothed_data.to_csv(index=False).encode('utf-8')
@@ -623,3 +571,4 @@ def display_recent_complete_day_summary(ml_data):
             st.table(df_recent_day)
         else:
             st.warning("No recent complete day found with all key features available.")
+
