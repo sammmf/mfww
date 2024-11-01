@@ -56,10 +56,10 @@ def parse_dates(date_str):
 def validate_data(ml_data, configuration):
     """Validate that all features from configuration are in ml_data."""
     # Validate feature names
-    config_features = set(configuration['feature_name'])
-    ml_data_columns = set(ml_data.columns)
+    config_features = configuration['feature_name'].tolist()
+    ml_data_columns = ml_data.columns.tolist()
 
-    missing_in_ml_data = config_features - ml_data_columns
+    missing_in_ml_data = list(set(config_features) - set(ml_data_columns))
     if missing_in_ml_data:
         st.warning(f"The following features are missing in ml_data and will be filled with NaN: {missing_in_ml_data}")
         for missing_feature in missing_in_ml_data:
@@ -70,7 +70,7 @@ def validate_data(ml_data, configuration):
         config_features.remove('date')
 
     # Replace zeros with NaN where zero is invalid
-    zero_invalid_fields = configuration[configuration['zero_invalid'] == 'yes']['feature_name']
+    zero_invalid_fields = configuration[configuration['zero_invalid'] == 'yes']['feature_name'].tolist()
     zero_invalid_fields = [f for f in zero_invalid_fields if f in ml_data.columns]
     ml_data[zero_invalid_fields] = ml_data[zero_invalid_fields].replace(0, np.nan)
 
@@ -82,7 +82,7 @@ def validate_data(ml_data, configuration):
             ml_data[col] = np.nan
 
     # Interpolate missing values for variable features
-    variable_features = configuration[configuration['adjustability'] == 'variable']['feature_name']
+    variable_features = configuration[configuration['adjustability'] == 'variable']['feature_name'].tolist()
     variable_features = [f for f in variable_features if f in ml_data.columns]
     ml_data[variable_features] = ml_data[variable_features].interpolate(method='linear', limit_direction='both', axis=0)
 
@@ -99,3 +99,4 @@ def validate_data(ml_data, configuration):
 
     ml_data.reset_index(drop=True, inplace=True)
     return True
+
