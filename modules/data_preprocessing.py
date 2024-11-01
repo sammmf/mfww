@@ -43,6 +43,7 @@ def preprocess_ml_data(ml_data):
         return None
 
     ml_data.sort_values('date', inplace=True)
+    ml_data.reset_index(drop=True, inplace=True)
     return ml_data
 
 def parse_dates(date_str):
@@ -86,7 +87,15 @@ def validate_data(ml_data, configuration):
     ml_data[variable_features] = ml_data[variable_features].interpolate(method='linear', limit_direction='both', axis=0)
 
     # Drop rows with less than 70% valid data
-    threshold = int(0.7 * len(config_features))
-    ml_data.dropna(subset=config_features, thresh=threshold, inplace=True)
+    total_features = len(config_features)
+    threshold = int(0.7 * total_features)
+    ml_data['valid_feature_count'] = ml_data[config_features].notna().sum(axis=1)
+    ml_data = ml_data[ml_data['valid_feature_count'] >= threshold]
+    ml_data.drop(columns=['valid_feature_count'], inplace=True)
 
+    if ml_data.empty:
+        st.error("No data left after dropping rows with insufficient valid data.")
+        return False
+
+    ml_data.reset_index(drop=True, inplace=True)
     return True
