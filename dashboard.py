@@ -15,46 +15,56 @@ def run_dashboard():
     # Initialize Dropbox and download data
     dbx = dropbox_integration.initialize_dropbox()
     if not dbx:
+        st.error("Failed to initialize Dropbox.")
         return
 
     data_downloaded = dropbox_integration.download_data_file(dbx)
     if not data_downloaded:
+        st.error("Failed to download data file from Dropbox.")
         return
 
     # Load data
     ml_data, configuration = data_preprocessing.load_data("daily_data.xlsx")
     if ml_data is None or configuration is None:
+        st.error("Failed to load data.")
         return
 
     # Preprocess data
     ml_data = data_preprocessing.preprocess_ml_data(ml_data)
     if ml_data is None:
+        st.error("Failed to preprocess ML data.")
         return
 
     configuration = configuration_handler.preprocess_configuration(configuration)
     if configuration is None:
+        st.error("Failed to preprocess configuration.")
         return
 
     # Validate data
     valid = data_preprocessing.validate_data(ml_data, configuration)
     if not valid:
+        st.error("Data validation failed.")
         return
 
     # Compute scores
     plant_scores = scoring.compute_plant_scores(ml_data, configuration)
     if plant_scores is None:
+        st.error("Failed to compute plant scores.")
         return
 
     # Extract variables for visualization
-    unit_process_scores = plant_scores['unit_process_scores']
-    formatted_unit_process_names = plant_scores['formatted_unit_process_names']
-    data_completeness = plant_scores['data_completeness']
+    unit_process_scores = plant_scores.get('unit_process_scores', {})
+    formatted_unit_process_names = plant_scores.get('formatted_unit_process_names', {})
+    data_completeness = plant_scores.get('data_completeness', pd.Series())
 
     # Calculate scores over time
     scores_over_time = scoring.calculate_scores_over_time(ml_data, configuration)
+    if scores_over_time is None:
+        st.error("Failed to calculate scores over time.")
+        return
 
     # Create Tabs
-    tabs = st.tabs(["Dashboard", "Data Query", "Machine Learning"])  # Added new tab
+    tabs = st.tabs(["Dashboard", "Data Query", "Machine Learning"])
 
     with tabs[0]:
         # Visualize results
