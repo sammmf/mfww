@@ -46,7 +46,7 @@ def display_dashboard(
     # Overall Plant Score
     with col1:
         display_gauge(
-            value=plant_scores['plant_performance_score'],
+            value=plant_scores.get('plant_performance_score'),
             title="Overall Plant Score",
             key="overall_performance_gauge"
         )
@@ -54,7 +54,7 @@ def display_dashboard(
     # Difficulty Score
     with col2:
         display_gauge(
-            value=plant_scores['difficulty_score'],
+            value=plant_scores.get('difficulty_score'),
             title="Difficulty Score",
             key="difficulty_gauge",
             thresholds=[
@@ -67,7 +67,7 @@ def display_dashboard(
     # Adjusted Performance Score
     with col3:
         display_gauge(
-            value=plant_scores['adjusted_performance_score'],
+            value=plant_scores.get('adjusted_performance_score'),
             title="Performance Adjusted for Difficulty",
             key="combined_performance_gauge"
         )
@@ -78,8 +78,8 @@ def display_dashboard(
     # Visualization of Current Performance vs. Historical Difficulty Levels
     display_scatter_performance_difficulty(
         scores_over_time,
-        plant_scores['plant_performance_score'],
-        plant_scores['difficulty_score']
+        plant_scores.get('plant_performance_score'),
+        plant_scores.get('difficulty_score')
     )
 
     # Unit Process Scores
@@ -97,7 +97,7 @@ def display_dashboard(
 def display_gauge(value, title, key, thresholds=None):
     """Display a gauge chart."""
     st.markdown(f"<h3 style='text-align: center;'>{title}</h3>", unsafe_allow_html=True)
-    if np.isnan(value):
+    if value is None or np.isnan(value):
         st.write("N/A (Insufficient data)")
         return
 
@@ -144,6 +144,7 @@ def display_time_series(scores_over_time):
     required_keys = ['dates', 'overall_scores', 'difficulty_scores', 'adjusted_scores']
     if not all(key in scores_over_time for key in required_keys):
         st.error("Incomplete data: Missing required keys in 'scores_over_time'.")
+        st.write("Available keys:", list(scores_over_time.keys()))
         return
 
     # Ensure that the lists are not empty and have equal lengths
@@ -158,21 +159,32 @@ def display_time_series(scores_over_time):
 
     if not (len(dates) == len(overall_scores) == len(difficulty_scores) == len(adjusted_scores)):
         st.error("Data length mismatch: The lists in 'scores_over_time' must have the same length.")
+        st.write("Lengths:",
+                 f"dates: {len(dates)}",
+                 f"overall_scores: {len(overall_scores)}",
+                 f"difficulty_scores: {len(difficulty_scores)}",
+                 f"adjusted_scores: {len(adjusted_scores)}")
         return
 
     # Create the DataFrame
     trend_df = pd.DataFrame({
         'Date': dates,
         'Overall Plant Score': [
-            s * 100 if not np.isnan(s) else None for s in overall_scores
+            s * 100 if s is not None and not np.isnan(s) else None for s in overall_scores
         ],
         'Difficulty Score': [
-            s * 100 if not np.isnan(s) else None for s in difficulty_scores
+            s * 100 if s is not None and not np.isnan(s) else None for s in difficulty_scores
         ],
         'Adjusted Performance Score': [
-            s * 100 if not np.isnan(s) else None for s in adjusted_scores
+            s * 100 if s is not None and not np.isnan(s) else None for s in adjusted_scores
         ]
     })
+
+    # Convert 'Date' column to datetime
+    trend_df['Date'] = pd.to_datetime(trend_df['Date'], errors='coerce')
+
+    # Remove rows with invalid dates
+    trend_df.dropna(subset=['Date'], inplace=True)
 
     # Drop rows where all scores are NaN
     trend_df.dropna(subset=[
@@ -186,27 +198,33 @@ def display_time_series(scores_over_time):
         st.warning("No valid data available to plot.")
         return
 
-    # Convert 'Date' column to datetime
-    trend_df['Date'] = pd.to_datetime(trend_df['Date'], errors='coerce')
-
-    # Remove rows with invalid dates
-    trend_df.dropna(subset=['Date'], inplace=True)
+    # Ensure that score columns are numeric
+    score_columns = ['Overall Plant Score', 'Difficulty Score', 'Adjusted Performance Score']
+    for col in score_columns:
+        trend_df[col] = pd.to_numeric(trend_df[col], errors='coerce')
 
     # Sort by 'Date'
     trend_df.sort_values('Date', inplace=True)
 
+    # Debug: Show the DataFrame
+    st.write("Trend DataFrame Preview:")
+    st.write(trend_df.head())
+    st.write("Data Types:")
+    st.write(trend_df.dtypes)
+
     # Plotting
-    fig = px.line(
-        trend_df,
-        x='Date',
-        y=[
-            'Overall Plant Score',
-            'Difficulty Score',
-            'Adjusted Performance Score'
-        ],
-        labels={'value': 'Score (%)', 'variable': 'KPI'}
-    )
-    st.plotly_chart(fig, use_container_width=True)
+    try:
+        fig = px.line(
+            trend_df,
+            x='Date',
+            y=score_columns,
+            labels={'value': 'Score (%)', 'variable': 'KPI', 'Date': 'Date'},
+            title='12-Month Performance Trends'
+        )
+        st.plotly_chart(fig, use_container_width=True)
+    except Exception as e:
+        st.error(f"An error occurred while plotting the time series: {e}")
+        st.write("Please check the data above for inconsistencies.")
 
 def display_scatter_performance_difficulty(
     scores_over_time,
@@ -232,49 +250,61 @@ def display_scatter_performance_difficulty(
     scatter_df = pd.DataFrame({
         'Date': dates,
         'Overall Plant Score': [
-            s * 100 if not np.isnan(s) else None for s in overall_scores
+            s * 100 if s is not None and not np.isnan(s) else None for s in overall_scores
         ],
         'Difficulty Score': [
-            s * 100 if not np.isnan(s) else None for s in difficulty_scores
+            s * 100 if s is not None and not np.isnan(s) else None for s in difficulty_scores
         ]
-    }).dropna()
+    })
+
+    # Convert 'Date' column to datetime
+    scatter_df['Date'] = pd.to_datetime(scatter_df['Date'], errors='coerce')
+    scatter_df.dropna(subset=['Date'], inplace=True)
+
+    # Drop rows with NaN values in scores
+    scatter_df.dropna(subset=['Overall Plant Score', 'Difficulty Score'], how='any', inplace=True)
 
     if scatter_df.empty:
         st.warning("No valid data available to plot.")
         return
 
-    # Create scatter plot
-    fig = px.scatter(
-        scatter_df,
-        x='Difficulty Score',
-        y='Overall Plant Score',
-        hover_data=['Date'],
-        labels={
-            'Difficulty Score': 'Difficulty Score (%)',
-            'Overall Plant Score': 'Overall Plant Score (%)'
-        }
-    )
-
-    # Highlight current performance
-    current_difficulty_score = (
-        difficulty_score * 100 if not np.isnan(difficulty_score) else None
-    )
-    current_overall_score = (
-        plant_performance_score * 100 if not np.isnan(plant_performance_score) else None
-    )
-    if current_difficulty_score is not None and current_overall_score is not None:
-        fig.add_trace(
-            go.Scatter(
-                x=[current_difficulty_score],
-                y=[current_overall_score],
-                mode='markers',
-                marker=dict(color='red', size=12),
-                name='Current Performance'
-            )
+    # Plot the scatter plot
+    try:
+        fig = px.scatter(
+            scatter_df,
+            x='Difficulty Score',
+            y='Overall Plant Score',
+            hover_data=['Date'],
+            labels={
+                'Difficulty Score': 'Difficulty Score (%)',
+                'Overall Plant Score': 'Overall Plant Score (%)'
+            },
+            title='Performance vs. Difficulty'
         )
 
-    st.plotly_chart(fig, use_container_width=True)
-    st.write("The red dot represents the current performance relative to historical difficulty levels.")
+        # Highlight current performance
+        current_difficulty_score = (
+            difficulty_score * 100 if difficulty_score is not None and not np.isnan(difficulty_score) else None
+        )
+        current_overall_score = (
+            plant_performance_score * 100 if plant_performance_score is not None and not np.isnan(plant_performance_score) else None
+        )
+        if current_difficulty_score is not None and current_overall_score is not None:
+            fig.add_trace(
+                go.Scatter(
+                    x=[current_difficulty_score],
+                    y=[current_overall_score],
+                    mode='markers',
+                    marker=dict(color='red', size=12),
+                    name='Current Performance'
+                )
+            )
+
+        st.plotly_chart(fig, use_container_width=True)
+        st.write("The red dot represents the current performance relative to historical difficulty levels.")
+    except Exception as e:
+        st.error(f"An error occurred while plotting the scatter plot: {e}")
+        st.write("Please check the data for inconsistencies.")
 
 def display_unit_process_scores(unit_process_scores, formatted_unit_process_names):
     st.header("Unit Process Scores")
@@ -291,14 +321,14 @@ def display_unit_process_scores(unit_process_scores, formatted_unit_process_name
             if item_idx >= num_processes:
                 break
             process, process_info = unit_process_items[item_idx]
-            unit_score = process_info['unit_score']
+            unit_score = process_info.get('unit_score')
             process_name = formatted_unit_process_names.get(process, process)
             with cols[idx]:
                 st.markdown(
                     f"<h4 style='text-align: center;'>{process_name}</h4>",
                     unsafe_allow_html=True
                 )
-                if np.isnan(unit_score):
+                if unit_score is None or np.isnan(unit_score):
                     st.write("N/A")
                 else:
                     # Use a smaller gauge chart for visual representation
@@ -363,7 +393,7 @@ def display_unit_process_trends(scores_over_time, formatted_unit_process_names):
 
         for process, scores in unit_process_scores_dict.items():
             process_name = formatted_unit_process_names.get(process, process)
-            if any(not np.isnan(s) for s in scores):
+            if any(s is not None and not np.isnan(s) for s in scores):
                 # Ensure that dates and scores have the same length
                 if len(dates) != len(scores):
                     st.warning(f"Data length mismatch for {process_name}.")
@@ -371,8 +401,15 @@ def display_unit_process_trends(scores_over_time, formatted_unit_process_names):
 
                 process_df = pd.DataFrame({
                     'Date': dates,
-                    'Score': [s * 100 if not np.isnan(s) else None for s in scores]
-                }).dropna()
+                    'Score': [s * 100 if s is not None and not np.isnan(s) else None for s in scores]
+                })
+
+                # Convert 'Date' column to datetime
+                process_df['Date'] = pd.to_datetime(process_df['Date'], errors='coerce')
+                process_df.dropna(subset=['Date'], inplace=True)
+
+                # Drop rows with NaN scores
+                process_df.dropna(subset=['Score'], inplace=True)
 
                 if not process_df.empty:
                     st.subheader(process_name)
@@ -380,15 +417,19 @@ def display_unit_process_trends(scores_over_time, formatted_unit_process_names):
                         process_df,
                         x='Date',
                         y='Score',
-                        labels={'Score': 'Score (%)'}
+                        labels={'Score': 'Score (%)'},
+                        title=f"{process_name} Performance Over Time"
                     )
                     st.plotly_chart(fig, use_container_width=True)
 
 def display_data_completeness(data_completeness):
     st.header("Data Completeness")
-    overall_completeness = data_completeness.mean() * 100
-    st.progress(overall_completeness / 100)
-    st.write(f"Overall Data Completeness: {overall_completeness:.0f}% Complete")
+    if data_completeness is not None and not np.isnan(data_completeness.mean()):
+        overall_completeness = data_completeness.mean() * 100
+        st.progress(overall_completeness / 100)
+        st.write(f"Overall Data Completeness: {overall_completeness:.0f}% Complete")
+    else:
+        st.write("Data completeness information is not available.")
 
 def display_detailed_data(unit_process_scores, formatted_unit_process_names):
     st.header("Detailed Data")
@@ -407,15 +448,15 @@ def display_detailed_data(unit_process_scores, formatted_unit_process_names):
         selected_process = process_name_to_key[selected_process_name]
         process_info = unit_process_scores.get(selected_process)
         if process_info:
-            feature_scores = process_info['features']
+            feature_scores = process_info.get('features', [])
             feature_data = []
             for fs in feature_scores:
-                completeness_percent = fs['completeness'] * 100
-                score = fs['score']
-                feature_status = "No Data" if np.isnan(score) else f"{score * 100:.1f}%"
+                completeness_percent = fs.get('completeness', 0) * 100
+                score = fs.get('score')
+                feature_status = "No Data" if score is None or np.isnan(score) else f"{score * 100:.1f}%"
                 feature_data.append({
                     'Feature': fs['feature_name'].replace('_', ' ').title(),
-                    'Score (%)': score * 100 if not np.isnan(score) else np.nan,
+                    'Score (%)': score * 100 if score is not None and not np.isnan(score) else np.nan,
                     'Status': feature_status,
                     'Completeness (%)': completeness_percent
                 })
@@ -423,15 +464,22 @@ def display_detailed_data(unit_process_scores, formatted_unit_process_names):
             st.table(feature_df)
             # Display charts for feature scores
             st.subheader(f"{selected_process_name} Feature Scores")
-            fig = px.bar(
-                feature_df.dropna(subset=['Score (%)']),
-                x='Feature',
-                y='Score (%)',
-                color='Score (%)',
-                range_y=[0, 100],
-                color_continuous_scale=['#FF4D4D', '#FFD700', '#4CAF50']
-            )
-            st.plotly_chart(fig, use_container_width=True)
+            valid_feature_df = feature_df.dropna(subset=['Score (%)'])
+            if not valid_feature_df.empty:
+                fig = px.bar(
+                    valid_feature_df,
+                    x='Feature',
+                    y='Score (%)',
+                    color='Score (%)',
+                    range_y=[0, 100],
+                    color_continuous_scale=['#FF4D4D', '#FFD700', '#4CAF50'],
+                    title=f"{selected_process_name} Feature Scores"
+                )
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.write("No valid feature scores available to display.")
+        else:
+            st.write("No information available for the selected unit process.")
 
 def display_data_query(ml_data):
     st.header("Data Query")
@@ -473,6 +521,13 @@ def display_data_query(ml_data):
             smoothed_data = query_data[['date'] + selected_features].set_index('date')
             smoothed_data = smoothed_data.rolling(window='14D').mean().reset_index()
 
+            # Remove rows with NaN values in selected features
+            smoothed_data.dropna(subset=selected_features, how='all', inplace=True)
+
+            if smoothed_data.empty:
+                st.warning("No valid data available after smoothing.")
+                return
+
             # Plot the selected features
             fig = go.Figure()
             max_range = {}
@@ -481,7 +536,7 @@ def display_data_query(ml_data):
                 max_range[feature] = data_range
 
             # Determine if we need a secondary y-axis
-            if len(selected_features) >= 2 and max(max_range.values()) / min(max_range.values()) > 10:
+            if len(selected_features) >= 2 and min(max_range.values()) > 0 and max(max_range.values()) / min(max_range.values()) > 10:
                 # Use secondary y-axis
                 first_feature = selected_features[0]
                 other_features = selected_features[1:]
