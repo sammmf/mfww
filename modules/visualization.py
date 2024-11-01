@@ -97,7 +97,7 @@ def display_dashboard(
 def display_gauge(value, title, key, thresholds=None):
     """Display a gauge chart."""
     st.markdown(f"<h3 style='text-align: center;'>{title}</h3>", unsafe_allow_html=True)
-    if value is None or np.isnan(value):
+    if value is None or pd.isna(value):
         st.write("N/A (Insufficient data)")
         return
 
@@ -170,13 +170,13 @@ def display_time_series(scores_over_time):
     trend_df = pd.DataFrame({
         'Date': dates,
         'Overall Plant Score': [
-            s * 100 if s is not None and not np.isnan(s) else None for s in overall_scores
+            s * 100 if s is not None and not pd.isna(s) else None for s in overall_scores
         ],
         'Difficulty Score': [
-            s * 100 if s is not None and not np.isnan(s) else None for s in difficulty_scores
+            s * 100 if s is not None and not pd.isna(s) else None for s in difficulty_scores
         ],
         'Adjusted Performance Score': [
-            s * 100 if s is not None and not np.isnan(s) else None for s in adjusted_scores
+            s * 100 if s is not None and not pd.isna(s) else None for s in adjusted_scores
         ]
     })
 
@@ -250,10 +250,10 @@ def display_scatter_performance_difficulty(
     scatter_df = pd.DataFrame({
         'Date': dates,
         'Overall Plant Score': [
-            s * 100 if s is not None and not np.isnan(s) else None for s in overall_scores
+            s * 100 if s is not None and not pd.isna(s) else None for s in overall_scores
         ],
         'Difficulty Score': [
-            s * 100 if s is not None and not np.isnan(s) else None for s in difficulty_scores
+            s * 100 if s is not None and not pd.isna(s) else None for s in difficulty_scores
         ]
     })
 
@@ -284,10 +284,10 @@ def display_scatter_performance_difficulty(
 
         # Highlight current performance
         current_difficulty_score = (
-            difficulty_score * 100 if difficulty_score is not None and not np.isnan(difficulty_score) else None
+            difficulty_score * 100 if difficulty_score is not None and not pd.isna(difficulty_score) else None
         )
         current_overall_score = (
-            plant_performance_score * 100 if plant_performance_score is not None and not np.isnan(plant_performance_score) else None
+            plant_performance_score * 100 if plant_performance_score is not None and not pd.isna(plant_performance_score) else None
         )
         if current_difficulty_score is not None and current_overall_score is not None:
             fig.add_trace(
@@ -328,7 +328,7 @@ def display_unit_process_scores(unit_process_scores, formatted_unit_process_name
                     f"<h4 style='text-align: center;'>{process_name}</h4>",
                     unsafe_allow_html=True
                 )
-                if unit_score is None or np.isnan(unit_score):
+                if unit_score is None or pd.isna(unit_score):
                     st.write("N/A")
                 else:
                     # Use a smaller gauge chart for visual representation
@@ -393,7 +393,7 @@ def display_unit_process_trends(scores_over_time, formatted_unit_process_names):
 
         for process, scores in unit_process_scores_dict.items():
             process_name = formatted_unit_process_names.get(process, process)
-            if any(s is not None and not np.isnan(s) for s in scores):
+            if any(s is not None and not pd.isna(s) for s in scores):
                 # Ensure that dates and scores have the same length
                 if len(dates) != len(scores):
                     st.warning(f"Data length mismatch for {process_name}.")
@@ -401,7 +401,7 @@ def display_unit_process_trends(scores_over_time, formatted_unit_process_names):
 
                 process_df = pd.DataFrame({
                     'Date': dates,
-                    'Score': [s * 100 if s is not None and not np.isnan(s) else None for s in scores]
+                    'Score': [s * 100 if s is not None and not pd.isna(s) else None for s in scores]
                 })
 
                 # Convert 'Date' column to datetime
@@ -424,7 +424,7 @@ def display_unit_process_trends(scores_over_time, formatted_unit_process_names):
 
 def display_data_completeness(data_completeness):
     st.header("Data Completeness")
-    if data_completeness is not None and not np.isnan(data_completeness.mean()):
+    if data_completeness is not None and not pd.isna(data_completeness.mean()):
         overall_completeness = data_completeness.mean() * 100
         st.progress(overall_completeness / 100)
         st.write(f"Overall Data Completeness: {overall_completeness:.0f}% Complete")
@@ -453,10 +453,10 @@ def display_detailed_data(unit_process_scores, formatted_unit_process_names):
             for fs in feature_scores:
                 completeness_percent = fs.get('completeness', 0) * 100
                 score = fs.get('score')
-                feature_status = "No Data" if score is None or np.isnan(score) else f"{score * 100:.1f}%"
+                feature_status = "No Data" if score is None or pd.isna(score) else f"{score * 100:.1f}%"
                 feature_data.append({
                     'Feature': fs['feature_name'].replace('_', ' ').title(),
-                    'Score (%)': score * 100 if score is not None and not np.isnan(score) else np.nan,
+                    'Score (%)': score * 100 if score is not None and not pd.isna(score) else np.nan,
                     'Status': feature_status,
                     'Completeness (%)': completeness_percent
                 })
