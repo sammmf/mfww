@@ -139,37 +139,74 @@ def display_gauge(value, title, key, thresholds=None):
 
 def display_time_series(scores_over_time):
     st.header("12-Month Performance Trends")
-    if scores_over_time['dates']:
-        trend_df = pd.DataFrame({
-            'Date': scores_over_time['dates'],
-            'Overall Plant Score': [
-                s * 100 if not np.isnan(s) else None for s in scores_over_time['overall_scores']
-            ],
-            'Difficulty Score': [
-                s * 100 if not np.isnan(s) else None for s in scores_over_time['difficulty_scores']
-            ],
-            'Adjusted Performance Score': [
-                s * 100 if not np.isnan(s) else None for s in scores_over_time['adjusted_scores']
-            ]
-        })
-        trend_df = trend_df.dropna(subset=[
+
+    # Check if scores_over_time has the required keys
+    required_keys = ['dates', 'overall_scores', 'difficulty_scores', 'adjusted_scores']
+    if not all(key in scores_over_time for key in required_keys):
+        st.error("Incomplete data: Missing required keys in 'scores_over_time'.")
+        return
+
+    # Ensure that the lists are not empty and have equal lengths
+    dates = scores_over_time['dates']
+    overall_scores = scores_over_time['overall_scores']
+    difficulty_scores = scores_over_time['difficulty_scores']
+    adjusted_scores = scores_over_time['adjusted_scores']
+
+    if not dates or not overall_scores or not difficulty_scores or not adjusted_scores:
+        st.warning("No data available to display.")
+        return
+
+    if not (len(dates) == len(overall_scores) == len(difficulty_scores) == len(adjusted_scores)):
+        st.error("Data length mismatch: The lists in 'scores_over_time' must have the same length.")
+        return
+
+    # Create the DataFrame
+    trend_df = pd.DataFrame({
+        'Date': dates,
+        'Overall Plant Score': [
+            s * 100 if not np.isnan(s) else None for s in overall_scores
+        ],
+        'Difficulty Score': [
+            s * 100 if not np.isnan(s) else None for s in difficulty_scores
+        ],
+        'Adjusted Performance Score': [
+            s * 100 if not np.isnan(s) else None for s in adjusted_scores
+        ]
+    })
+
+    # Drop rows where all scores are NaN
+    trend_df.dropna(subset=[
+        'Overall Plant Score',
+        'Difficulty Score',
+        'Adjusted Performance Score'
+    ], how='all', inplace=True)
+
+    # Ensure that the DataFrame is not empty
+    if trend_df.empty:
+        st.warning("No valid data available to plot.")
+        return
+
+    # Convert 'Date' column to datetime
+    trend_df['Date'] = pd.to_datetime(trend_df['Date'], errors='coerce')
+
+    # Remove rows with invalid dates
+    trend_df.dropna(subset=['Date'], inplace=True)
+
+    # Sort by 'Date'
+    trend_df.sort_values('Date', inplace=True)
+
+    # Plotting
+    fig = px.line(
+        trend_df,
+        x='Date',
+        y=[
             'Overall Plant Score',
             'Difficulty Score',
             'Adjusted Performance Score'
-        ])
-        trend_df = trend_df.sort_values('Date')
-        # Plotting
-        fig = px.line(
-            trend_df,
-            x='Date',
-            y=[
-                'Overall Plant Score',
-                'Difficulty Score',
-                'Adjusted Performance Score'
-            ],
-            labels={'value': 'Score (%)', 'variable': 'KPI'}
-        )
-        st.plotly_chart(fig, use_container_width=True)
+        ],
+        labels={'value': 'Score (%)', 'variable': 'KPI'}
+    )
+    st.plotly_chart(fig, use_container_width=True)
 
 def display_scatter_performance_difficulty(
     scores_over_time,
@@ -177,47 +214,67 @@ def display_scatter_performance_difficulty(
     difficulty_score
 ):
     st.header("Performance Relative to Historical Difficulty Levels")
-    if scores_over_time['dates']:
-        scatter_df = pd.DataFrame({
-            'Date': scores_over_time['dates'],
-            'Overall Plant Score': [
-                s * 100 if not np.isnan(s) else None for s in scores_over_time['overall_scores']
-            ],
-            'Difficulty Score': [
-                s * 100 if not np.isnan(s) else None for s in scores_over_time['difficulty_scores']
-            ]
-        }).dropna()
-        # Create scatter plot
-        fig = px.scatter(
-            scatter_df,
-            x='Difficulty Score',
-            y='Overall Plant Score',
-            hover_data=['Date'],
-            labels={
-                'Difficulty Score': 'Difficulty Score (%)',
-                'Overall Plant Score': 'Overall Plant Score (%)'
-            }
-        )
-        # Highlight current performance
-        current_difficulty_score = (
-            difficulty_score * 100 if not np.isnan(difficulty_score) else None
-        )
-        current_overall_score = (
-            plant_performance_score * 100 if not np.isnan(plant_performance_score) else None
-        )
-        if current_difficulty_score is not None and current_overall_score is not None:
-            fig.add_trace(
-                go.Scatter(
-                    x=[current_difficulty_score],
-                    y=[current_overall_score],
-                    mode='markers',
-                    marker=dict(color='red', size=12),
-                    name='Current Performance'
-                )
-            )
 
-        st.plotly_chart(fig, use_container_width=True)
-        st.write("The red dot represents the current performance relative to historical difficulty levels.")
+    # Check if required data is available
+    if not scores_over_time.get('dates') or not scores_over_time.get('overall_scores') or not scores_over_time.get('difficulty_scores'):
+        st.warning("Insufficient data to display the scatter plot.")
+        return
+
+    dates = scores_over_time['dates']
+    overall_scores = scores_over_time['overall_scores']
+    difficulty_scores = scores_over_time['difficulty_scores']
+
+    # Ensure that the lists have equal lengths
+    if not (len(dates) == len(overall_scores) == len(difficulty_scores)):
+        st.error("Data length mismatch: The lists in 'scores_over_time' must have the same length.")
+        return
+
+    scatter_df = pd.DataFrame({
+        'Date': dates,
+        'Overall Plant Score': [
+            s * 100 if not np.isnan(s) else None for s in overall_scores
+        ],
+        'Difficulty Score': [
+            s * 100 if not np.isnan(s) else None for s in difficulty_scores
+        ]
+    }).dropna()
+
+    if scatter_df.empty:
+        st.warning("No valid data available to plot.")
+        return
+
+    # Create scatter plot
+    fig = px.scatter(
+        scatter_df,
+        x='Difficulty Score',
+        y='Overall Plant Score',
+        hover_data=['Date'],
+        labels={
+            'Difficulty Score': 'Difficulty Score (%)',
+            'Overall Plant Score': 'Overall Plant Score (%)'
+        }
+    )
+
+    # Highlight current performance
+    current_difficulty_score = (
+        difficulty_score * 100 if not np.isnan(difficulty_score) else None
+    )
+    current_overall_score = (
+        plant_performance_score * 100 if not np.isnan(plant_performance_score) else None
+    )
+    if current_difficulty_score is not None and current_overall_score is not None:
+        fig.add_trace(
+            go.Scatter(
+                x=[current_difficulty_score],
+                y=[current_overall_score],
+                mode='markers',
+                marker=dict(color='red', size=12),
+                name='Current Performance'
+            )
+        )
+
+    st.plotly_chart(fig, use_container_width=True)
+    st.write("The red dot represents the current performance relative to historical difficulty levels.")
 
 def display_unit_process_scores(unit_process_scores, formatted_unit_process_names):
     st.header("Unit Process Scores")
@@ -297,16 +354,34 @@ def display_unit_process_scores(unit_process_scores, formatted_unit_process_name
 def display_unit_process_trends(scores_over_time, formatted_unit_process_names):
     st.header("Unit Process Performance Trends")
     with st.expander("Show/Hide Unit Process Graphs"):
-        for process, scores in scores_over_time['unit_process_scores'].items():
+        if 'unit_process_scores' not in scores_over_time or 'dates' not in scores_over_time:
+            st.warning("Insufficient data to display unit process trends.")
+            return
+
+        dates = scores_over_time['dates']
+        unit_process_scores_dict = scores_over_time['unit_process_scores']
+
+        for process, scores in unit_process_scores_dict.items():
             process_name = formatted_unit_process_names.get(process, process)
             if any(not np.isnan(s) for s in scores):
+                # Ensure that dates and scores have the same length
+                if len(dates) != len(scores):
+                    st.warning(f"Data length mismatch for {process_name}.")
+                    continue
+
                 process_df = pd.DataFrame({
-                    'Date': scores_over_time['dates'],
+                    'Date': dates,
                     'Score': [s * 100 if not np.isnan(s) else None for s in scores]
                 }).dropna()
+
                 if not process_df.empty:
                     st.subheader(process_name)
-                    fig = px.line(process_df, x='Date', y='Score', labels={'Score': 'Score (%)'})
+                    fig = px.line(
+                        process_df,
+                        x='Date',
+                        y='Score',
+                        labels={'Score': 'Score (%)'}
+                    )
                     st.plotly_chart(fig, use_container_width=True)
 
 def display_data_completeness(data_completeness):
@@ -349,7 +424,7 @@ def display_detailed_data(unit_process_scores, formatted_unit_process_names):
             # Display charts for feature scores
             st.subheader(f"{selected_process_name} Feature Scores")
             fig = px.bar(
-                feature_df,
+                feature_df.dropna(subset=['Score (%)']),
                 x='Feature',
                 y='Score (%)',
                 color='Score (%)',
@@ -404,8 +479,9 @@ def display_data_query(ml_data):
             for idx, feature in enumerate(selected_features):
                 data_range = smoothed_data[feature].max() - smoothed_data[feature].min()
                 max_range[feature] = data_range
+
             # Determine if we need a secondary y-axis
-            if len(selected_features) >= 2 and min(max_range.values()) > 0 and max(max_range.values()) / min(max_range.values()) > 10:
+            if len(selected_features) >= 2 and max(max_range.values()) / min(max_range.values()) > 10:
                 # Use secondary y-axis
                 first_feature = selected_features[0]
                 other_features = selected_features[1:]
@@ -458,51 +534,20 @@ def display_data_query(ml_data):
                 )
             st.plotly_chart(fig, use_container_width=True)
 
-            # Create CSV download with additional sections
-            # Section 1: Summary of Metrics
-            summary_info = {}
-            summary_info['Date Range'] = f"{query_data['date'].min().date()} to {query_data['date'].max().date()}"
-            summary_info['Total Record Count'] = len(query_data)
+            # Create a CSV download button for the queried data
+            csv = smoothed_data.to_csv(index=False).encode('utf-8')
 
-            # Calculate overall summary metrics
-            overall_metrics = query_data[selected_features].agg(['sum', 'mean', 'count', 'std', 'min', 'max']).round(2)
-
-            # Prepare CSV content
-            csv_content = []
-
-            # Add Summary Section
-            csv_content.append("Summary of Metrics")
-            for key, value in summary_info.items():
-                csv_content.append(f"{key}, {value}")
-            csv_content.append("")  # Empty line for separation
-
-            # Add Detailed Calculations Section
-            csv_content.append("Detailed Calculations")
-            # Transpose overall_metrics for better formatting
-            overall_metrics_transposed = overall_metrics.T
-            overall_metrics_transposed.index.name = 'Feature'
-            overall_metrics_transposed.reset_index(inplace=True)
-            csv_content.append(overall_metrics_transposed.to_csv(index=False))
-            csv_content.append("")  # Empty line for separation
-
-            # Add Raw Data Section
-            csv_content.append("Raw Data")
-            csv_content.append(query_data[['date'] + selected_features].to_csv(index=False))
-
-            # Combine all parts into a single CSV string
-            csv_data = '\n'.join(csv_content).encode('utf-8')
-
-            # Download Button
             st.download_button(
                 label="Download Queried Data as CSV",
-                data=csv_data,
-                file_name='queried_data_with_metrics.csv',
+                data=csv,
+                file_name='queried_data.csv',
                 mime='text/csv'
             )
 
 def display_recent_complete_day_summary(ml_data):
     st.header("Recent Complete Day Summary")
     key_features = ['d2_ph', 'd3_ph', 'mlss', 'sbd', 'eff_flow']
+
     # Check if key features are in the data
     missing_key_features = [kf for kf in key_features if kf not in ml_data.columns]
     if missing_key_features:
