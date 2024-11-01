@@ -225,6 +225,14 @@ def calculate_scores_over_time(ml_data, configuration):
     config = configuration.set_index('feature_name')
     unit_processes = config['unit_process'].unique()
 
+    # Convert 'date' column to datetime
+    if 'date' not in ml_data.columns:
+        st.error("The 'date' column is missing from ml_data.")
+        return None
+
+    ml_data['date'] = pd.to_datetime(ml_data['date'], errors='coerce')
+    ml_data.dropna(subset=['date'], inplace=True)
+
     # Prepare time ranges: last 12 months in two-week intervals
     max_date = ml_data['date'].max()
     min_date = max_date - pd.Timedelta(days=365)
@@ -369,11 +377,12 @@ def calculate_scores_over_time(ml_data, configuration):
             adjusted_performance_score = plant_performance_score
 
         # Store results
-        time_series_dates.append(start_period)
+        time_series_dates.append(start_period.strftime('%Y-%m-%d'))
         overall_scores.append(plant_performance_score)
         difficulty_scores_list.append(difficulty_score)
         adjusted_scores.append(adjusted_performance_score)
 
+    # Prepare the final scores_over_time dictionary
     scores_over_time = {
         'dates': time_series_dates,
         'overall_scores': overall_scores,
