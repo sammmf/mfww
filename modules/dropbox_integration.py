@@ -2,7 +2,6 @@
 
 import dropbox
 import streamlit as st
-from datetime import datetime, timezone
 import time
 import requests
 from modules import firebase_integration
@@ -59,7 +58,13 @@ def get_initial_tokens(APP_KEY, APP_SECRET):
     """
     Initiate OAuth flow to get initial access and refresh tokens.
     """
-    auth_flow = DropboxOAuth2FlowNoRedirect(APP_KEY, APP_SECRET, token_access_type='offline')
+    # Use PKCE by setting use_pkce=True
+    auth_flow = DropboxOAuth2FlowNoRedirect(
+        APP_KEY,
+        app_secret=APP_SECRET,
+        token_access_type='offline',
+        use_pkce=True
+    )
 
     authorize_url = auth_flow.start()
     st.info("Click the link below to authorize the application with Dropbox:")
