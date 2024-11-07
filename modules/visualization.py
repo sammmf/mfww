@@ -194,12 +194,6 @@ def display_time_series(scores_over_time):
     # Sort DataFrame by 'Date'
     trend_df.sort_values('Date', inplace=True)
 
-    # Debug: Show the DataFrame
-    st.write("Trend DataFrame:")
-    st.dataframe(trend_df)
-    st.write("Data Types:")
-    st.write(trend_df.dtypes)
-
     # Plotting
     try:
         fig = px.line(
