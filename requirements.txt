@@ -10,3 +10,4 @@ xgboost>=1.3.0
 scikit-learn
 scipy
 flask
+firebase-admin
