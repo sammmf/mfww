@@ -1,9 +1,8 @@
 # modules/firebase_integration.py
 
 import firebase_admin
-from firebase_admin import credentials, firestore
+from firebase_admin import credentials, firestore, storage
 import streamlit as st
-import json
 
 def initialize_firebase():
     """
@@ -11,24 +10,28 @@ def initialize_firebase():
     If the app is already initialized, this function will do nothing.
     """
     if not firebase_admin._apps:
+        # Access the credentials under 'firebase' in st.secrets
+        firebase_secrets = st.secrets["firebase"]
+        
         # Convert the secrets into a dict format required by Firebase
         firebase_creds = {
-            "type": st.secrets["type"],
-            "project_id": st.secrets["project_id"],
-            "private_key_id": st.secrets["private_key_id"],
-            "private_key": st.secrets["private_key"].replace("\\n", "\n"),  # Replace escaped newlines
-            "client_email": st.secrets["client_email"],
-            "client_id": st.secrets["client_id"],
-            "auth_uri": st.secrets["auth_uri"],
-            "token_uri": st.secrets["token_uri"],
-            "auth_provider_x509_cert_url": st.secrets["auth_provider_x509_cert_url"],
-            "client_x509_cert_url": st.secrets["client_x509_cert_url"]
+            "type": firebase_secrets["type"],
+            "project_id": firebase_secrets["project_id"],
+            "private_key_id": firebase_secrets["private_key_id"],
+            "private_key": firebase_secrets["private_key"].replace("\\n", "\n"),
+            "client_email": firebase_secrets["client_email"],
+            "client_id": firebase_secrets["client_id"],
+            "auth_uri": firebase_secrets["auth_uri"],
+            "token_uri": firebase_secrets["token_uri"],
+            "auth_provider_x509_cert_url": firebase_secrets["auth_provider_x509_cert_url"],
+            "client_x509_cert_url": firebase_secrets["client_x509_cert_url"]
+            # Include 'universe_domain' if it's required
         }
         
-        # Use the credentials from Streamlit secrets to initialize the app
+        # Use the credentials to initialize the app
         cred = credentials.Certificate(firebase_creds)
         firebase_admin.initialize_app(cred)
-    
+        
 def get_firestore_client():
     """
     Get a client for the Firestore database.
