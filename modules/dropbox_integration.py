@@ -136,7 +136,7 @@ def download_data_file(dbx):
     :return: True if successful, False otherwise
     """
     try:
-        metadata, res = dbx.files_download("/daily_data.xlsx")
+        metadata, res = dbx.files_download("/Work/McCall_Farms/McCall_Shared_Data/daily_data.xlsx")
         with open("daily_data.xlsx", "wb") as f:
             f.write(res.content)
         return True
