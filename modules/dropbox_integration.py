@@ -11,10 +11,10 @@ def initialize_dropbox():
     """
     Initialize Dropbox client with automatic token refresh.
     """
-    # Get App Key and Secret from Streamlit secrets
+    # Get App Key from Streamlit secrets
     try:
         APP_KEY = st.secrets["DROPBOX_APP_KEY"]
-        APP_SECRET = st.secrets["DROPBOX_APP_SECRET"]
+        # APP_SECRET is not needed when using PKCE
     except KeyError as e:
         st.error(f"Missing key in st.secrets: {e}")
         st.stop()
@@ -28,7 +28,7 @@ def initialize_dropbox():
         expires_at = tokens.get('expires_at')
     else:
         # Tokens not found, initiate OAuth flow to get initial tokens
-        access_token, refresh_token, expires_at = get_initial_tokens(APP_KEY, APP_SECRET)
+        access_token, refresh_token, expires_at = get_initial_tokens(APP_KEY)
         if not access_token:
             st.error("Failed to obtain access token.")
             st.stop()
@@ -41,7 +41,7 @@ def initialize_dropbox():
     current_time = time.time()
     if current_time > expires_at:
         # Refresh the access token
-        access_token, refresh_token, expires_at = refresh_access_token(APP_KEY, APP_SECRET, refresh_token)
+        access_token, refresh_token, expires_at = refresh_access_token(APP_KEY, refresh_token)
         if not access_token:
             st.error("Failed to refresh access token.")
             st.stop()
@@ -53,12 +53,12 @@ def initialize_dropbox():
     # Initialize Dropbox client
     dbx = dropbox.Dropbox(
         oauth2_access_token=access_token,
-        app_key=APP_KEY,
-        app_secret=APP_SECRET,
-        oauth2_refresh_token=refresh_token
+        oauth2_refresh_token=refresh_token,
+        app_key=APP_KEY
+        # Do not include app_secret
     )
     return dbx
-    
+
 def get_initial_tokens(APP_KEY):
     """
     Initiate OAuth flow to get initial access and refresh tokens.
@@ -92,7 +92,7 @@ def get_initial_tokens(APP_KEY):
         st.stop()
         return None, None, None
 
-def refresh_access_token(APP_KEY, APP_SECRET, refresh_token):
+def refresh_access_token(APP_KEY, refresh_token):
     """
     Refresh the access token using the refresh token.
 
@@ -101,10 +101,10 @@ def refresh_access_token(APP_KEY, APP_SECRET, refresh_token):
     token_url = "https://api.dropboxapi.com/oauth2/token"
     data = {
         "grant_type": "refresh_token",
-        "refresh_token": refresh_token
+        "refresh_token": refresh_token,
+        "client_id": APP_KEY
     }
-    auth = (APP_KEY, APP_SECRET)
-    response = requests.post(token_url, data=data, auth=auth)
+    response = requests.post(token_url, data=data)
     if response.status_code == 200:
         tokens = response.json()
         access_token = tokens["access_token"]
