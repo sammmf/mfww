@@ -59,7 +59,7 @@ def initialize_dropbox():
     )
     return dbx
     
-def get_initial_tokens(APP_KEY, APP_SECRET):
+def get_initial_tokens(APP_KEY):
     """
     Initiate OAuth flow to get initial access and refresh tokens.
     """
