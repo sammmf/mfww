@@ -103,8 +103,8 @@ def get_initial_tokens(APP_KEY):
     else:
         st.stop()
         return None, None, None
-        
-    def refresh_access_token(APP_KEY, refresh_token):
+
+def refresh_access_token(APP_KEY, refresh_token):
     """
     Refresh the access token using the refresh token.
 
