@@ -218,7 +218,7 @@ def compute_plant_scores(ml_data, configuration):
     }
 
     return plant_scores
-
+    
 def calculate_scores_over_time(ml_data, configuration):
     """Calculate plant performance and difficulty scores over time."""
     # Clean and standardize feature names in configuration
@@ -253,7 +253,7 @@ def calculate_scores_over_time(ml_data, configuration):
         period_data = ml_data[(ml_data['date'] >= start_period) & (ml_data['date'] < end_period)]
         if period_data.empty:
             # Append NaN values for this period
-            time_series_dates.append(start_period)
+            time_series_dates.append(start_period.strftime('%Y-%m-%d'))
             overall_scores.append(np.nan)
             difficulty_scores_list.append(np.nan)
             adjusted_scores.append(np.nan)
@@ -392,3 +392,5 @@ def calculate_scores_over_time(ml_data, configuration):
     }
 
     return scores_over_time
+
+# ... rest of the code remains unchanged ...
