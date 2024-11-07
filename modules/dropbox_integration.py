@@ -63,14 +63,22 @@ def get_initial_tokens(APP_KEY):
     """
     Initiate OAuth flow to get initial access and refresh tokens.
     """
-    # Use PKCE by setting use_pkce=True
-    auth_flow = DropboxOAuth2FlowNoRedirect(
-        APP_KEY,
-        token_access_type='offline',
-        use_pkce=True
-    )
+    if 'auth_flow' not in st.session_state:
+        # Use PKCE by setting use_pkce=True
+        auth_flow = DropboxOAuth2FlowNoRedirect(
+            APP_KEY,
+            token_access_type='offline',
+            use_pkce=True
+        )
+        # Store the auth_flow object in session_state
+        st.session_state['auth_flow'] = auth_flow
+        authorize_url = auth_flow.start()
+        st.session_state['authorize_url'] = authorize_url
+    else:
+        # Retrieve auth_flow and authorize_url from session_state
+        auth_flow = st.session_state['auth_flow']
+        authorize_url = st.session_state['authorize_url']
 
-    authorize_url = auth_flow.start()
     st.info("Click the link below to authorize the application with Dropbox:")
     st.write(f"[Authorize with Dropbox]({authorize_url})")
 
@@ -84,6 +92,9 @@ def get_initial_tokens(APP_KEY):
             refresh_token = oauth_result.refresh_token
             expires_in = oauth_result.expires_in
             expires_at = time.time() + expires_in
+            # Clear auth_flow from session_state
+            del st.session_state['auth_flow']
+            del st.session_state['authorize_url']
             return access_token, refresh_token, expires_at
         except Exception as e:
             st.error(f"Error obtaining access token: {e}")
@@ -91,7 +102,6 @@ def get_initial_tokens(APP_KEY):
     else:
         st.stop()
         return None, None, None
-
 def refresh_access_token(APP_KEY, refresh_token):
     """
     Refresh the access token using the refresh token.
