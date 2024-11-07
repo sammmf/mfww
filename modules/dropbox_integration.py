@@ -70,7 +70,7 @@ def get_initial_tokens(APP_KEY):
             token_access_type='offline',
             use_pkce=True
         )
-        # Store the auth_flow object in session_state
+        # Store the auth_flow and authorize_url in session_state
         st.session_state['auth_flow'] = auth_flow
         authorize_url = auth_flow.start()
         st.session_state['authorize_url'] = authorize_url
@@ -90,7 +90,8 @@ def get_initial_tokens(APP_KEY):
             oauth_result = auth_flow.finish(auth_code.strip())
             access_token = oauth_result.access_token
             refresh_token = oauth_result.refresh_token
-            expires_in = oauth_result.expires_in
+            # Dropbox does not provide expires_in; set a default value
+            expires_in = 14400  # 4 hours in seconds
             expires_at = time.time() + expires_in
             # Clear auth_flow from session_state
             del st.session_state['auth_flow']
@@ -102,7 +103,8 @@ def get_initial_tokens(APP_KEY):
     else:
         st.stop()
         return None, None, None
-def refresh_access_token(APP_KEY, refresh_token):
+        
+    def refresh_access_token(APP_KEY, refresh_token):
     """
     Refresh the access token using the refresh token.
 
