@@ -12,8 +12,13 @@ def initialize_dropbox():
     Initialize Dropbox client with automatic token refresh.
     """
     # Get App Key and Secret from Streamlit secrets
-    APP_KEY = st.secrets["DROPBOX_APP_KEY"]
-    APP_SECRET = st.secrets["DROPBOX_APP_SECRET"]
+    try:
+        APP_KEY = st.secrets["DROPBOX_APP_KEY"]
+        APP_SECRET = st.secrets["DROPBOX_APP_SECRET"]
+    except KeyError as e:
+        st.error(f"Missing key in st.secrets: {e}")
+        st.stop()
+        return None
 
     # Retrieve tokens from Firebase
     tokens = firebase_integration.get_tokens_from_firebase()
@@ -53,7 +58,7 @@ def initialize_dropbox():
         oauth2_refresh_token=refresh_token
     )
     return dbx
-
+    
 def get_initial_tokens(APP_KEY, APP_SECRET):
     """
     Initiate OAuth flow to get initial access and refresh tokens.
