@@ -66,7 +66,6 @@ def get_initial_tokens(APP_KEY, APP_SECRET):
     # Use PKCE by setting use_pkce=True
     auth_flow = DropboxOAuth2FlowNoRedirect(
         APP_KEY,
-        consumer_secret=APP_SECRET,
         token_access_type='offline',
         use_pkce=True
     )
