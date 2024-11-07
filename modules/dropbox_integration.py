@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 import time
 import requests
 from modules import firebase_integration
+from dropbox.oauth import DropboxOAuth2FlowNoRedirect
 
 def initialize_dropbox():
     """
@@ -22,9 +23,15 @@ def initialize_dropbox():
         refresh_token = tokens.get('refresh_token')
         expires_at = tokens.get('expires_at')
     else:
-        st.error("Dropbox tokens not found in Firebase. Please authenticate.")
-        st.stop()
-        return None
+        # Tokens not found, initiate OAuth flow to get initial tokens
+        access_token, refresh_token, expires_at = get_initial_tokens(APP_KEY, APP_SECRET)
+        if not access_token:
+            st.error("Failed to obtain access token.")
+            st.stop()
+            return None
+
+        # Save tokens to Firebase
+        firebase_integration.save_tokens_to_firebase(access_token, refresh_token, expires_at)
 
     # Check if access token is expired
     current_time = time.time()
@@ -47,6 +54,34 @@ def initialize_dropbox():
         oauth2_refresh_token=refresh_token
     )
     return dbx
+
+def get_initial_tokens(APP_KEY, APP_SECRET):
+    """
+    Initiate OAuth flow to get initial access and refresh tokens.
+    """
+    auth_flow = DropboxOAuth2FlowNoRedirect(APP_KEY, APP_SECRET, token_access_type='offline')
+
+    authorize_url = auth_flow.start()
+    st.info("Click the link below to authorize the application with Dropbox:")
+    st.write(f"[Authorize with Dropbox]({authorize_url})")
+
+    auth_code = st.text_input("Enter the authorization code here:")
+    auth_submit = st.button("Submit Authorization Code")
+
+    if auth_submit and auth_code:
+        try:
+            oauth_result = auth_flow.finish(auth_code.strip())
+            access_token = oauth_result.access_token
+            refresh_token = oauth_result.refresh_token
+            expires_in = oauth_result.expires_in
+            expires_at = time.time() + expires_in
+            return access_token, refresh_token, expires_at
+        except Exception as e:
+            st.error(f"Error obtaining access token: {e}")
+            return None, None, None
+    else:
+        st.stop()
+        return None, None, None
 
 def refresh_access_token(APP_KEY, APP_SECRET, refresh_token):
     """
