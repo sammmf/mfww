@@ -56,7 +56,7 @@ def run_dashboard():
     # Extract variables for visualization
     unit_process_scores = plant_scores.get('unit_process_scores', {})
     formatted_unit_process_names = plant_scores.get('formatted_unit_process_names', {})
-    data_completeness = plant_scores.get('data_completeness', pd.Series(dtype='float64'))
+    data_completeness = plant_scores.get('data_completeness', pd.Series())
     
     # Calculate scores over time
     scores_over_time = scoring.calculate_scores_over_time(ml_data, configuration)
