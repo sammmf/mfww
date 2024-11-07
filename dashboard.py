@@ -1,5 +1,6 @@
 # dashboard.py
 
+import pandas as pd
 import streamlit as st
 from modules import dropbox_integration
 from modules import data_preprocessing
