@@ -1,5 +1,7 @@
+# modules/firebase_integration.py
+
 import firebase_admin
-from firebase_admin import credentials, firestore, storage
+from firebase_admin import credentials, firestore
 import streamlit as st
 import json
 
@@ -14,7 +16,7 @@ def initialize_firebase():
             "type": st.secrets["type"],
             "project_id": st.secrets["project_id"],
             "private_key_id": st.secrets["private_key_id"],
-            "private_key": st.secrets["private_key"].replace("\\n", "\n"),  # Make sure to replace escaped newlines
+            "private_key": st.secrets["private_key"].replace("\\n", "\n"),  # Replace escaped newlines
             "client_email": st.secrets["client_email"],
             "client_id": st.secrets["client_id"],
             "auth_uri": st.secrets["auth_uri"],
@@ -25,10 +27,8 @@ def initialize_firebase():
         
         # Use the credentials from Streamlit secrets to initialize the app
         cred = credentials.Certificate(firebase_creds)
-        firebase_admin.initialize_app(cred, {
-            'storageBucket': f"{st.secrets['project_id']}.appspot.com"
-        })
-
+        firebase_admin.initialize_app(cred)
+    
 def get_firestore_client():
     """
     Get a client for the Firestore database.
@@ -37,46 +37,33 @@ def get_firestore_client():
     initialize_firebase()
     return firestore.client()
 
-def upload_file_to_firebase(file, filename):
+def save_tokens_to_firebase(access_token, refresh_token, expires_at):
     """
-    Uploads a file to Firebase Storage.
-    
-    :param file: File-like object to upload
-    :param filename: Name to use for the file in Firebase Storage
-    """
-    initialize_firebase()
-    bucket = storage.bucket()
-    blob = bucket.blob(filename)
-    blob.upload_from_file(file)
-    blob.make_public()  # Optional: make the file public, remove if not needed
-    
-    # Return the public URL of the uploaded file
-    return blob.public_url
+    Save Dropbox tokens to Firebase Firestore.
 
-def download_file_from_firebase(filename, local_path):
+    :param access_token: The Dropbox access token
+    :param refresh_token: The Dropbox refresh token
+    :param expires_at: Expiration time of the access token (timestamp)
     """
-    Downloads a file from Firebase Storage.
-    
-    :param filename: Name of the file in Firebase Storage
-    :param local_path: Local path where the file should be saved
-    """
-    initialize_firebase()
-    bucket = storage.bucket()
-    blob = bucket.blob(filename)
-    blob.download_to_filename(local_path)
-    st.success(f"File downloaded to {local_path}")
+    db = get_firestore_client()
+    tokens_doc = db.collection('tokens').document('dropbox')
+    tokens_data = {
+        'access_token': access_token,
+        'refresh_token': refresh_token,
+        'expires_at': expires_at
+    }
+    tokens_doc.set(tokens_data)
 
-# Usage example in your main app
-def main():
-    st.title("Firebase Integration Example")
-    
-    # Example: Upload a file
-    uploaded_file = st.file_uploader("Choose a file to upload to Firebase")
-    if uploaded_file is not None:
-        url = upload_file_to_firebase(uploaded_file, uploaded_file.name)
-        st.write("File uploaded to Firebase! Public URL:", url)
-    
-    # Example: Download a file
-    if st.button("Download example file"):
-        filename = "example.txt"  # Replace with your file's name in Firebase
-        download_file_from_firebase(filename, f"./{filename}")
+def get_tokens_from_firebase():
+    """
+    Retrieve Dropbox tokens from Firebase Firestore.
+
+    :return: A dictionary containing 'access_token', 'refresh_token', and 'expires_at'
+    """
+    db = get_firestore_client()
+    tokens_doc = db.collection('tokens').document('dropbox')
+    doc = tokens_doc.get()
+    if doc.exists:
+        return doc.to_dict()
+    else:
+        return None
