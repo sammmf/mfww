@@ -10,6 +10,7 @@ from sklearn.feature_selection import RFECV
 import plotly.express as px
 from scipy.optimize import minimize
 import logging
+from datetime import datetime
 
 def run_machine_learning_tab(ml_data, configuration):
     st.header("Machine Learning Predictions and Optimization")
