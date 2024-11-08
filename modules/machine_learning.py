@@ -189,6 +189,10 @@ def preprocess_data_for_modeling(ml_data, selected_target):
     """
     Preprocess the data for modeling.
     """
+    # Exclude future dates**
+    today = pd.Timestamp(datetime.today().date())
+    ml_data = ml_data[ml_data['date'] <= today]
+    
     # Include all features except 'date' and the target variable
     features = [col for col in ml_data.columns if col not in ['date', selected_target]]
 
