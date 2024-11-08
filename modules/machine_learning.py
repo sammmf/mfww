@@ -8,11 +8,14 @@ from sklearn.model_selection import train_test_split, TimeSeriesSplit, GridSearc
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.feature_selection import RFECV
 import plotly.express as px
-from scipy.optimize import minimize
-import logging
 from datetime import datetime
+import logging
 
 def run_machine_learning_tab(ml_data, configuration):
+    """
+    This function defines the Machine Learning tab in the Streamlit app.
+    It allows users to select a target variable, run the ML pipeline, and view results.
+    """
     st.header("Machine Learning Predictions and Optimization")
 
     # Initialize session state variables
@@ -33,20 +36,23 @@ def run_machine_learning_tab(ml_data, configuration):
         st.success("Machine learning pipeline completed.")
         st.session_state['ml_pipeline_ran'] = True
         st.session_state['ml_results'] = results
+
+        # Store the trained model in session state for use in the optimizer
         st.session_state['trained_model'] = results['model_results']['model']
 
         # Display Logs
-        st.subheader("Feature Elimination Logs")
+        st.subheader("Feature Combination Logs")
         if results['logs']:
             for log in results['logs']:
                 st.write(log)
         else:
-            st.write("No features were eliminated.")
+            st.write("No features were combined.")
 
         # Display Selected Features
         st.subheader("Selected Features")
         selected_features_display = [f.replace('_', ' ').title() for f in results['selected_features']]
         st.write(", ".join(selected_features_display))
+        st.session_state['selected_features'] = results['selected_features']
 
         # Display Model Performance
         st.subheader("Model Performance")
@@ -90,67 +96,13 @@ def run_machine_learning_tab(ml_data, configuration):
 
     # Proceed to Optimization Section if ML pipeline ran successfully
     if st.session_state.get('ml_pipeline_ran', False):
-        display_optimization_section(ml_data, configuration)
-
-def display_optimization_section(ml_data, configuration):
-    st.header("Optimization")
-    st.write("Optimize parameters to achieve desired target values.")
-
-    results = st.session_state['ml_results']
-    selected_features = results['selected_features']
-    selected_target = st.session_state['selected_target']
-    model = results['model_results']['model']
-
-    # Allow users to input desired target value
-    desired_target_value = st.number_input(
-        f"Desired {selected_target.replace('_', ' ').title()} Value:",
-        value=float(ml_data[selected_target].mean())
-    )
-    st.session_state['desired_target_value'] = desired_target_value
-
-    # Add a button to trigger optimization
-    if st.button("Run Optimization"):
-        with st.spinner('Running optimization...'):
-            optimization_results = run_optimization(
-                ml_data,
-                configuration,
-                selected_features,
-                selected_target,
-                model,
-                desired_target_value
-            )
-        st.success("Optimization completed.")
-
-        # Display Optimized Parameters
-        st.subheader("Optimized Parameters")
-        optimized_df = pd.DataFrame({
-            'Feature': [f.replace('_', ' ').title() for f in optimization_results['adjustable_features']],
-            'Optimized Value': optimization_results['optimized_values']
-        })
-        st.table(optimized_df)
-
-        # Display Predicted Target Value
-        st.subheader("Optimized Prediction")
-        optimized_prediction = optimization_results['optimized_prediction']
-        st.write(f"Predicted {selected_target.replace('_', ' ').title()}: {optimized_prediction:.2f}")
-
-        # Download Option for Optimization Results
-        st.subheader("Download Optimization Results")
-        optimization_df = optimized_df.copy()
-        optimization_df['Desired Target'] = desired_target_value
-        optimization_df['Predicted Target'] = optimized_prediction
-        csv = optimization_df.to_csv(index=False).encode('utf-8')
-        st.download_button(
-            label="Download Optimization Results as CSV",
-            data=csv,
-            file_name='optimization_results.csv',
-            mime='text/csv'
-        )
+        # You can add optimization code here if needed
+        pass
 
 def run_machine_learning_pipeline(ml_data, configuration, selected_target):
     """
     Main function to run the machine learning pipeline, including data preprocessing,
-    feature selection, hyperparameter tuning, and final model training.
+    feature combination, feature selection, hyperparameter tuning, and final model training.
     """
     # Initialize logging
     logging.basicConfig(level=logging.INFO)
@@ -158,26 +110,30 @@ def run_machine_learning_pipeline(ml_data, configuration, selected_target):
     # Step 1: Preprocess Data
     X, y = preprocess_data_for_modeling(ml_data, selected_target)
 
-    # Step 2: Identify and Remove Highly Correlated Features
-    correlated_features = get_correlated_features(X, threshold=0.8)
-    X = remove_correlated_features(X, correlated_features, y)
+    # Step 2: Identify Groups of Highly Correlated Features
+    correlated_groups = get_correlated_feature_groups(X, threshold=0.8)
+    logging.info(f"Identified {len(correlated_groups)} groups of correlated features.")
 
-    # Step 3: Perform Feature Selection using RFE
+    # Step 3: Combine Correlated Features by Averaging
+    X = combine_correlated_features(X, correlated_groups)
+    logging.info("Combined correlated features by averaging.")
+
+    # Step 4: Perform Feature Selection using RFE
     selected_features, feature_ranking = perform_feature_selection(X, y)
 
-    # Step 4: Hyperparameter Tuning
+    # Step 5: Hyperparameter Tuning
     best_params = hyperparameter_tuning(X[selected_features], y)
 
-    # Step 5: Retrain Model with Selected Features and Best Parameters
+    # Step 6: Retrain Model with Selected Features and Best Parameters
     model_results = train_and_evaluate_model(X[selected_features], y, best_params)
 
-    # Step 6: Calculate Feature Importances
+    # Step 7: Calculate Feature Importances
     feature_importances = calculate_feature_importances(model_results['model'], selected_features)
 
-    # Step 7: Prepare Logs
-    logs = log_feature_elimination(correlated_features, feature_ranking)
+    # Step 8: Prepare Logs
+    logs = log_feature_combination(correlated_groups)
 
-    # Step 8: Prepare Results
+    # Step 9: Prepare Results
     results = {
         'selected_features': selected_features,
         'feature_ranking': feature_ranking,
@@ -191,10 +147,10 @@ def preprocess_data_for_modeling(ml_data, selected_target):
     """
     Preprocess the data for modeling.
     """
-    # Exclude future dates**
+    # Exclude future dates
     today = pd.Timestamp(datetime.today().date())
     ml_data = ml_data[ml_data['date'] <= today]
-    
+
     # Include all features except 'date' and the target variable
     features = [col for col in ml_data.columns if col not in ['date', selected_target]]
 
@@ -208,39 +164,68 @@ def preprocess_data_for_modeling(ml_data, selected_target):
 
     return X, y
 
-def get_correlated_features(X, threshold=0.8):
+def get_correlated_feature_groups(X, threshold=0.8):
     """
-    Identify highly correlated feature pairs.
+    Identify groups of highly correlated features.
+
+    Parameters:
+    - X: DataFrame of features.
+    - threshold: Correlation threshold to consider features as highly correlated.
+
+    Returns:
+    - correlated_groups: A list of lists, where each sublist contains names of highly correlated features.
     """
-    corr_matrix = X.corr().abs()
-    upper_tri = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
+    corr_matrix = X.corr().abs()  # Compute absolute correlation matrix
+    correlated_groups = []
+    visited = set()
 
-    # Find pairs of features with correlation greater than threshold
-    correlated_pairs = [
-        (col, row) for col in upper_tri.columns for row in upper_tri.index if upper_tri.loc[row, col] > threshold
-    ]
-    return correlated_pairs
+    for col in corr_matrix.columns:
+        if col not in visited:
+            # Find features correlated with 'col' beyond the threshold
+            correlated_features = corr_matrix.index[corr_matrix[col] > threshold].tolist()
+            correlated_features = [f for f in correlated_features if f != col]
+            if correlated_features:
+                # Create a group with the current feature and its correlated features
+                group = [col] + correlated_features
+                correlated_groups.append(group)
+                visited.update(group)  # Mark features as visited
+            else:
+                visited.add(col)
+    return correlated_groups
 
-def remove_correlated_features(X, correlated_pairs, y):
+def combine_correlated_features(X, correlated_groups):
     """
-    Remove correlated features, keeping the one with higher correlation with the target variable.
+    Combine correlated features by averaging them to create new features.
+
+    Parameters:
+    - X: DataFrame of features.
+    - correlated_groups: A list of lists containing groups of correlated features.
+
+    Returns:
+    - X_combined: DataFrame with combined features.
     """
-    features_to_drop = set()
-    for feature1, feature2 in correlated_pairs:
-        corr_with_target_1 = abs(np.corrcoef(X[feature1], y)[0, 1])
-        corr_with_target_2 = abs(np.corrcoef(X[feature2], y)[0, 1])
-
-        if corr_with_target_1 >= corr_with_target_2:
-            features_to_drop.add(feature2)
-        else:
-            features_to_drop.add(feature1)
-
-    X = X.drop(columns=list(features_to_drop))
-    return X
+    X_combined = X.copy()
+    for group in correlated_groups:
+        if len(group) > 1:
+            # Create a new feature name by joining original feature names
+            new_feature_name = '_'.join(group) + '_avg'
+            # Compute the average of the features in the group
+            X_combined[new_feature_name] = X[group].mean(axis=1)
+            # Drop the original features
+            X_combined = X_combined.drop(columns=group)
+    return X_combined
 
 def perform_feature_selection(X, y):
     """
     Perform Recursive Feature Elimination with Cross-Validation (RFECV) to select features.
+
+    Parameters:
+    - X: DataFrame of features.
+    - y: Series of target variable.
+
+    Returns:
+    - selected_features: List of selected feature names.
+    - feature_ranking: Series with feature rankings.
     """
     # Initialize the model
     xgb_model = xgb.XGBRegressor(
@@ -272,6 +257,13 @@ def perform_feature_selection(X, y):
 def hyperparameter_tuning(X, y):
     """
     Perform hyperparameter tuning using GridSearchCV.
+
+    Parameters:
+    - X: DataFrame of features.
+    - y: Series of target variable.
+
+    Returns:
+    - best_params: Dictionary of best hyperparameters found.
     """
     xgb_model = xgb.XGBRegressor(objective='reg:squarederror', verbosity=0)
 
@@ -300,6 +292,14 @@ def hyperparameter_tuning(X, y):
 def train_and_evaluate_model(X, y, params):
     """
     Train the model with the selected features and best hyperparameters, then evaluate its performance.
+
+    Parameters:
+    - X: DataFrame of features.
+    - y: Series of target variable.
+    - params: Dictionary of hyperparameters.
+
+    Returns:
+    - results: Dictionary containing the trained model and evaluation metrics.
     """
     # Split data (keeping the time series order)
     X_train, X_test, y_train, y_test = train_test_split(
@@ -338,6 +338,13 @@ def train_and_evaluate_model(X, y, params):
 def calculate_feature_importances(model, selected_features):
     """
     Calculate feature importances from the trained model.
+
+    Parameters:
+    - model: Trained XGBoost model.
+    - selected_features: List of feature names used in the model.
+
+    Returns:
+    - importance_df: DataFrame containing features and their importance scores.
     """
     importance = model.get_booster().get_score(importance_type='gain')
     importance_df = pd.DataFrame({
@@ -347,105 +354,22 @@ def calculate_feature_importances(model, selected_features):
     importance_df = importance_df.sort_values(by='Importance', ascending=False)
     return importance_df
 
-def log_feature_elimination(correlated_pairs, feature_ranking):
+def log_feature_combination(correlated_groups):
     """
-    Log the features that were eliminated and why.
+    Log the groups of features that were combined.
+
+    Parameters:
+    - correlated_groups: A list of lists containing groups of correlated features.
+
+    Returns:
+    - logs: A list of log messages.
     """
     logs = []
-    if correlated_pairs:
-        logs.append("Removed correlated features (threshold > 0.8):")
-        for feature1, feature2 in correlated_pairs:
-            logs.append(f" - {feature1} and {feature2} are correlated.")
-    eliminated_features = feature_ranking[feature_ranking > 1].index.tolist()
-    if eliminated_features:
-        logs.append(f"Features eliminated by RFE: {', '.join(eliminated_features)}")
+    if correlated_groups:
+        logs.append("Combined correlated features (threshold > 0.8):")
+        for group in correlated_groups:
+            if len(group) > 1:
+                logs.append(f" - Combined features {', '.join(group)} into a single feature by averaging.")
+    else:
+        logs.append("No correlated features found to combine.")
     return logs
-
-def run_optimization(ml_data, configuration, selected_features, selected_target, model, desired_target_value):
-    """
-    Optimize feature values to achieve the desired target value.
-    """
-    # Get adjustable features
-    config = configuration.set_index('feature_name')
-    adjustable_features = config[config['adjustability'] == 'variable'].index.tolist()
-    adjustable_features = [f for f in selected_features if f in adjustable_features]
-
-    if not adjustable_features:
-        st.error("No adjustable features are among the selected features. Optimization cannot proceed.")
-        return
-
-    # Get bounds for adjustable features
-    bounds = bounds_factory(ml_data, configuration, adjustable_features)
-    initial_guess = initial_guess_factory(ml_data, adjustable_features)
-
-    # Define objective function
-    objective_function = objective_function_factory(model, adjustable_features, selected_features, desired_target_value)
-
-    # Run optimization
-    result = minimize(
-        objective_function,
-        x0=initial_guess,
-        bounds=bounds,
-        method='L-BFGS-B',
-        options={'maxiter': 100}
-    )
-
-    optimized_feature_values = result.x
-
-    # Predicted value with optimized parameters
-    feature_dict = {feature: [value] for feature, value in zip(adjustable_features, optimized_feature_values)}
-    input_df = pd.DataFrame(feature_dict)
-
-    # Fill in non-adjustable features with their mean values
-    non_adjustable_features = [f for f in selected_features if f not in adjustable_features]
-    for feature in non_adjustable_features:
-        input_df[feature] = ml_data[feature].mean()
-
-    optimized_prediction = model.predict(input_df)[0]
-
-    optimization_results = {
-        'adjustable_features': adjustable_features,
-        'optimized_values': optimized_feature_values,
-        'optimized_prediction': optimized_prediction
-    }
-
-    return optimization_results
-
-def objective_function_factory(model, adjustable_features, selected_features, desired_target_value):
-    def objective_function(feature_values):
-        # Create input DataFrame for prediction
-        feature_dict = {feature: [value] for feature, value in zip(adjustable_features, feature_values)}
-        input_df = pd.DataFrame(feature_dict)
-
-        # Fill in non-adjustable features with their mean values
-        non_adjustable_features = [f for f in selected_features if f not in adjustable_features]
-        for feature in non_adjustable_features:
-            input_df[feature] = model.feature_names_in_[feature]
-
-        # Predict using the model
-        predicted = model.predict(input_df)[0]
-
-        # Objective is the squared difference between predicted and desired target value
-        return (predicted - desired_target_value) ** 2
-    return objective_function
-
-def initial_guess_factory(ml_data, adjustable_features):
-    # Initial guess: mean of the adjustable feature values
-    initial_guess = [ml_data[feature].mean() for feature in adjustable_features]
-    return initial_guess
-
-def bounds_factory(ml_data, configuration, adjustable_features):
-    # Get bounds for features from configuration
-    config = configuration.set_index('feature_name')
-    bounds = []
-    for feature in adjustable_features:
-        if feature in config.index:
-            min_val = config.loc[feature, 'min']
-            max_val = config.loc[feature, 'max']
-            bounds.append((min_val, max_val))
-        else:
-            # If feature not in configuration, use data min and max
-            min_val = ml_data[feature].min()
-            max_val = ml_data[feature].max()
-            bounds.append((min_val, max_val))
-    return bounds
