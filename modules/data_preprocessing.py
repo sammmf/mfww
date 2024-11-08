@@ -42,6 +42,10 @@ def preprocess_ml_data(ml_data):
         st.error("The 'date' column is not in datetime format.")
         return None
 
+    # Exclude future dates
+    today = pd.Timestamp('today').normalize()
+    ml_data = ml_data[ml_data['date'] <= today]
+
     ml_data.sort_values('date', inplace=True)
     ml_data.reset_index(drop=True, inplace=True)
     return ml_data
