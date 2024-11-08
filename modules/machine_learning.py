@@ -166,33 +166,33 @@ def preprocess_data_for_modeling(ml_data, selected_target):
 
 def get_correlated_feature_groups(X, threshold=0.8):
     """
-    Identify groups of highly correlated features.
+    Identify groups of highly correlated features without overlapping columns.
 
     Parameters:
     - X: DataFrame of features.
     - threshold: Correlation threshold to consider features as highly correlated.
 
     Returns:
-    - correlated_groups: A list of lists, where each sublist contains names of highly correlated features.
+    - correlated_groups: A list of lists containing groups of correlated features.
     """
-    corr_matrix = X.corr().abs()  # Compute absolute correlation matrix
+    corr_matrix = X.corr().abs()
     correlated_groups = []
     visited = set()
 
     for col in corr_matrix.columns:
         if col not in visited:
-            # Find features correlated with 'col' beyond the threshold
-            correlated_features = corr_matrix.index[corr_matrix[col] > threshold].tolist()
+            # Find features correlated with 'col' beyond the threshold and not yet visited
+            high_corr_features = corr_matrix.loc[~corr_matrix.index.isin(visited), col]
+            correlated_features = high_corr_features[high_corr_features > threshold].index.tolist()
             correlated_features = [f for f in correlated_features if f != col]
             if correlated_features:
-                # Create a group with the current feature and its correlated features
                 group = [col] + correlated_features
                 correlated_groups.append(group)
-                visited.update(group)  # Mark features as visited
+                visited.update(group)
             else:
                 visited.add(col)
     return correlated_groups
-
+    
 def combine_correlated_features(X, correlated_groups):
     """
     Combine correlated features by averaging them to create new features.
