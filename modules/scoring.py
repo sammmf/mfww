@@ -3,6 +3,7 @@
 import numpy as np
 import pandas as pd
 import streamlit as st
+from datetime import datetime
 
 def calculate_feature_score(value, min_val, max_val, optimal_min, optimal_max):
     """Calculate individual feature scores using optimal ranges."""
