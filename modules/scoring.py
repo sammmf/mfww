@@ -233,11 +233,16 @@ def calculate_scores_over_time(ml_data, configuration):
     ml_data['date'] = pd.to_datetime(ml_data['date'], errors='coerce')
     ml_data.dropna(subset=['date'], inplace=True)
 
+    # **Ensure dates are not in the future**
+    today = pd.Timestamp(datetime.today().date())
+    ml_data = ml_data[ml_data['date'] <= today]
+
     # Prepare time ranges: last 12 months in two-week intervals
-    max_date = ml_data['date'].max()
+    max_date_in_data = ml_data['date'].max()
+    max_date = min(max_date_in_data, today)
     min_date = max_date - pd.Timedelta(days=365)
     date_ranges = pd.date_range(start=min_date, end=max_date, freq='2W')
-
+    
     # Lists to store time series data
     time_series_dates = []
     overall_scores = []
