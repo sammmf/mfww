@@ -44,7 +44,6 @@ def preprocess_ml_data(ml_data):
 
     # Exclude future dates
     today = pd.Timestamp('today').normalize()
-    st.write(f"Today's date according to the system is: {today}")
     ml_data = ml_data[ml_data['date'] <= today]
 
     ml_data.sort_values('date', inplace=True)
