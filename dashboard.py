@@ -87,7 +87,11 @@ def run_dashboard():
         machine_learning.run_machine_learning_tab(ml_data, configuration)
 
     with tabs[3]:
-        optimizer.run_process_optimizer(ml_data, configuration, model)
+        if 'trained_model' in st.session_state:
+            model = st.session_state['trained_model']
+            optimizer.run_process_optimizer(ml_data, configuration, model)
+        else:
+            st.error("Please run the machine learning pipeline first.")
 
 if __name__ == "__main__":
     run_dashboard()
