@@ -65,33 +65,34 @@ def run_dashboard():
         st.error("Failed to calculate scores over time.")
         return
 
-    # Create Tabs
-    tabs = st.tabs(["Dashboard", "Data Query", "Machine Learning", "Process Optimizer"])
+     # Create Tabs and unpack them into variables
+tab_dashboard, tab_data_query, tab_machine_learning, tab_process_optimizer = st.tabs([
+    "Dashboard", "Data Query", "Machine Learning", "Process Optimizer"
+])
 
-    with tabs[0]:
-        # Visualize results
-        visualization.display_dashboard(
-            plant_scores,
-            scores_over_time,
-            unit_process_scores,
-            formatted_unit_process_names,
-            data_completeness
-        )
+with tab_dashboard:
+    # Visualize results
+    visualization.display_dashboard(
+        plant_scores,
+        scores_over_time,
+        unit_process_scores,
+        formatted_unit_process_names,
+        data_completeness
+    )
 
-    with tabs[1]:
-        visualization.display_data_query(ml_data)
-        visualization.display_recent_complete_day_summary(ml_data)
+with tab_data_query:
+    visualization.display_data_query(ml_data)
+    visualization.display_recent_complete_day_summary(ml_data)
 
-    with tabs[2]:
-        # Machine Learning Tab
-        machine_learning.run_machine_learning_tab(ml_data, configuration)
+with tab_machine_learning:
+    # Machine Learning Tab
+    machine_learning.run_machine_learning_tab(ml_data, configuration)
 
-    with tabs[3]:
-        if 'trained_model' in st.session_state:
-            model = st.session_state['trained_model']
-            optimizer.run_process_optimizer(ml_data, configuration, model)
-        else:
-            st.error("Please run the machine learning pipeline first.")
-
+with tab_process_optimizer:
+    if 'trained_model' in st.session_state:
+        model = st.session_state['trained_model']
+        optimizer.run_process_optimizer(ml_data, configuration, model)
+    else:
+        st.error("Please run the machine learning pipeline first.")
 if __name__ == "__main__":
     run_dashboard()
