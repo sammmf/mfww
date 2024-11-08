@@ -7,7 +7,8 @@ from modules import data_preprocessing
 from modules import configuration_handler
 from modules import scoring
 from modules import visualization
-from modules import machine_learning  # New module
+from modules import machine_learning
+from modules import optimizer
 
 def run_dashboard():
     st.set_page_config(page_title="Wastewater Treatment Plant Dashboard", layout="wide")
