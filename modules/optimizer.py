@@ -4,7 +4,7 @@ import streamlit as st
 import pandas as pd
 from scipy.optimize import minimize
 import numpy as np
-import xgboost as xgboost
+import xgboost as xgb
 
 def run_process_optimizer(ml_data, configuration, model):
     st.header("Process Optimizer")
