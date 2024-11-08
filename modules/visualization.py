@@ -496,7 +496,7 @@ def display_data_query(ml_data):
                 'Last 6 Months': max_date - pd.Timedelta(days=180),
                 'Last Year': max_date - pd.Timedelta(days=365),
             }.get(timeframe, max_date - pd.Timedelta(days=365))  # Default: Last Year
-            return data[data['date'] >= start_date] & (data['date'] <= max_date)]
+            return data[(data['date'] >= start_date) & (data['date'] <= max_date)]
 
         query_data = filter_data_by_time(ml_data, timeframe)
 
