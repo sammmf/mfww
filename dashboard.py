@@ -65,7 +65,7 @@ def run_dashboard():
         return
 
     # Create Tabs
-    tabs = st.tabs(["Dashboard", "Data Query", "Machine Learning"])
+    tabs = st.tabs(["Dashboard", "Data Query", "Machine Learning", "Process Optimizer"])
 
     with tabs[0]:
         # Visualize results
@@ -84,6 +84,9 @@ def run_dashboard():
     with tabs[2]:
         # Machine Learning Tab
         machine_learning.run_machine_learning_tab(ml_data, configuration)
+
+    with tabs[3]:
+        optimizer.run_process_optimizer(ml_data, configuration, model)
 
 if __name__ == "__main__":
     run_dashboard()
