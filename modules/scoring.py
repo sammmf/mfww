@@ -235,7 +235,6 @@ def calculate_scores_over_time(ml_data, configuration):
 
     # **Ensure dates are not in the future**
     today = pd.Timestamp(datetime.today().date())
-    st.write(f"Today's date according to the system is: {today}")
     ml_data = ml_data[ml_data['date'] <= today]
 
     # Prepare time ranges: last 12 months in two-week intervals
