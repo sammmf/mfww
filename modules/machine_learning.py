@@ -33,6 +33,7 @@ def run_machine_learning_tab(ml_data, configuration):
         st.success("Machine learning pipeline completed.")
         st.session_state['ml_pipeline_ran'] = True
         st.session_state['ml_results'] = results
+        st.session_state['trained_model'] = results['model_results']['model']
 
         # Display Logs
         st.subheader("Feature Elimination Logs")
