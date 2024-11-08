@@ -398,5 +398,3 @@ def calculate_scores_over_time(ml_data, configuration):
     }
 
     return scores_over_time
-
-# ... rest of the code remains unchanged ...
