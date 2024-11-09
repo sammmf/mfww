@@ -31,11 +31,23 @@ def run_machine_learning_tab(ml_data, configuration):
     st.session_state['selected_target'] = selected_target
 
     if st.button("Run Machine Learning Pipeline"):
-        with st.spinner('Running machine learning pipeline...'):
-            results = run_machine_learning_pipeline(ml_data, configuration, selected_target)
+    # Initialize progress bar and status text
+    progress_bar = st.progress(0)
+    status_text = st.empty()
+    try:
+        # Run the pipeline with progress indicators
+        results = run_machine_learning_pipeline(
+            ml_data, configuration, selected_target, progress_bar, status_text
+        )
         st.success("Machine learning pipeline completed.")
         st.session_state['ml_pipeline_ran'] = True
         st.session_state['ml_results'] = results
+        # Store the trained model in session state for use in the optimizer
+        st.session_state['trained_model'] = results['model_results']['model']
+        # ... rest of the code to display results
+    except Exception as e:
+        st.error(f"An error occurred during the pipeline: {e}")
+        st.session_state['ml_pipeline_ran'] = False
 
         # Store the trained model in session state for use in the optimizer
         st.session_state['trained_model'] = results['model_results']['model']
@@ -99,49 +111,76 @@ def run_machine_learning_tab(ml_data, configuration):
         # You can add optimization code here if needed
         pass
 
-def run_machine_learning_pipeline(ml_data, configuration, selected_target):
-    """
-    Main function to run the machine learning pipeline, including data preprocessing,
-    feature combination, feature selection, hyperparameter tuning, and final model training.
-    """
-    # Initialize logging
-    logging.basicConfig(level=logging.INFO)
+def run_machine_learning_pipeline(ml_data, configuration, selected_target, progress_bar, status_text):
+    import time  # Import time for sleep in example (remove in production)
+    total_steps = 7
+    current_step = 0
 
-    # Step 1: Preprocess Data
-    X, y = preprocess_data_for_modeling(ml_data, selected_target)
+    try:
+        # Step 1: Preprocess Data
+        status_text.text("Step 1/7: Preprocessing data...")
+        X, y = preprocess_data_for_modeling(ml_data, selected_target)
+        current_step += 1
+        progress_bar.progress(current_step / total_steps)
 
-    # Step 2: Identify Groups of Highly Correlated Features
-    correlated_groups = get_correlated_feature_groups(X, threshold=0.8)
-    logging.info(f"Identified {len(correlated_groups)} groups of correlated features.")
+        # Step 2: Identify Correlated Features
+        status_text.text("Step 2/7: Identifying correlated features...")
+        correlated_groups = get_correlated_feature_groups(X, threshold=0.8)
+        current_step += 1
+        progress_bar.progress(current_step / total_steps)
 
-    # Step 3: Combine Correlated Features by Averaging
-    X = combine_correlated_features(X, correlated_groups)
-    logging.info("Combined correlated features by averaging.")
+        # Step 3: Combine Correlated Features
+        status_text.text("Step 3/7: Combining correlated features...")
+        X = combine_correlated_features(X, correlated_groups)
+        current_step += 1
+        progress_bar.progress(current_step / total_steps)
 
-    # Step 4: Perform Feature Selection using RFE
-    selected_features, feature_ranking = perform_feature_selection(X, y)
+        # Step 4: Feature Selection
+        status_text.text("Step 4/7: Performing feature selection...")
+        selected_features, feature_ranking = perform_feature_selection(X, y)
+        current_step += 1
+        progress_bar.progress(current_step / total_steps)
 
-    # Step 5: Hyperparameter Tuning
-    best_params = hyperparameter_tuning(X[selected_features], y)
+        # Step 5: Hyperparameter Tuning
+        status_text.text("Step 5/7: Hyperparameter tuning (this may take several minutes)...")
+        best_params = hyperparameter_tuning(X[selected_features], y)
+        current_step += 1
+        progress_bar.progress(current_step / total_steps)
 
-    # Step 6: Retrain Model with Selected Features and Best Parameters
-    model_results = train_and_evaluate_model(X[selected_features], y, best_params)
+        # Step 6: Train Final Model
+        status_text.text("Step 6/7: Training the final model...")
+        model_results = train_and_evaluate_model(X[selected_features], y, best_params)
+        current_step += 1
+        progress_bar.progress(current_step / total_steps)
 
-    # Step 7: Calculate Feature Importances
-    feature_importances = calculate_feature_importances(model_results['model'], selected_features)
+        # Step 7: Calculate Feature Importances
+        status_text.text("Step 7/7: Calculating feature importances...")
+        feature_importances = calculate_feature_importances(model_results['model'], selected_features)
+        current_step += 1
+        progress_bar.progress(current_step / total_steps)
 
-    # Step 8: Prepare Logs
-    logs = log_feature_combination(correlated_groups)
+        # Prepare Logs
+        logs = log_feature_combination(correlated_groups)
 
-    # Step 9: Prepare Results
-    results = {
-        'selected_features': selected_features,
-        'feature_ranking': feature_ranking,
-        'model_results': model_results,
-        'feature_importances': feature_importances,
-        'logs': logs
-    }
-    return results
+        # Finalize
+        progress_bar.progress(1.0)
+        status_text.text("Pipeline completed.")
+
+        # Prepare Results
+        results = {
+            'selected_features': selected_features,
+            'feature_ranking': feature_ranking,
+            'model_results': model_results,
+            'feature_importances': feature_importances,
+            'logs': logs
+        }
+        return results
+
+    except Exception as e:
+        progress_bar.progress(1.0)
+        status_text.text("An error occurred during the pipeline.")
+        st.error(f"Exception: {e}")
+        raise e  # Re-raise the exception to be caught in the calling function
 
 def preprocess_data_for_modeling(ml_data, selected_target):
     """
