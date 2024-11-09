@@ -11,6 +11,13 @@ import plotly.express as px
 from datetime import datetime
 import logging
 
+# Configure logging
+logging.basicConfig(
+    filename='ml_pipeline.log',
+    level=logging.INFO,
+    format='%(asctime)s:%(levelname)s:%(message)s'
+)
+
 def run_machine_learning_tab(ml_data, configuration):
     """
     This function defines the Machine Learning tab in the Streamlit app.
@@ -178,6 +185,7 @@ def run_machine_learning_pipeline(ml_data, configuration, selected_target, progr
         progress_bar.progress(1.0)
         status_text.text("An error occurred during the pipeline.")
         st.error(f"Exception: {e}")
+        logging.exception("An exception occured during the machine learning pipeline")
         raise e  # Re-raise the exception to be caught in the calling function
 
 # Rest of your function definitions at the module level (no indentation)
@@ -273,12 +281,12 @@ def perform_feature_selection(X, y):
     )
 
     # Use TimeSeriesSplit for cross-validation due to time series data
-    tscv = TimeSeriesSplit(n_splits=5)
+    tscv = TimeSeriesSplit(n_splits=3)
 
     # Perform RFECV
     rfecv = RFECV(
         estimator=xgb_model,
-        step=1,
+        step=5,
         cv=tscv,
         scoring='r2',
         n_jobs=-1,
