@@ -30,7 +30,7 @@ def run_machine_learning_tab(ml_data, configuration):
     selected_target = target_name_mapping[selected_target_display]
     st.session_state['selected_target'] = selected_target
 
-    if st.button("Run Machine Learning Pipeline"):
+if st.button("Run Machine Learning Pipeline"):
     # Initialize progress bar and status text
     progress_bar = st.progress(0)
     status_text = st.empty()
@@ -42,12 +42,6 @@ def run_machine_learning_tab(ml_data, configuration):
         st.success("Machine learning pipeline completed.")
         st.session_state['ml_pipeline_ran'] = True
         st.session_state['ml_results'] = results
-        # Store the trained model in session state for use in the optimizer
-        st.session_state['trained_model'] = results['model_results']['model']
-        # ... rest of the code to display results
-    except Exception as e:
-        st.error(f"An error occurred during the pipeline: {e}")
-        st.session_state['ml_pipeline_ran'] = False
 
         # Store the trained model in session state for use in the optimizer
         st.session_state['trained_model'] = results['model_results']['model']
@@ -106,10 +100,9 @@ def run_machine_learning_tab(ml_data, configuration):
             mime='text/csv'
         )
 
-    # Proceed to Optimization Section if ML pipeline ran successfully
-    if st.session_state.get('ml_pipeline_ran', False):
-        # You can add optimization code here if needed
-        pass
+    except Exception as e:
+        st.error(f"An error occurred during the pipeline: {e}")
+        st.session_state['ml_pipeline_ran'] = False
 
 def run_machine_learning_pipeline(ml_data, configuration, selected_target, progress_bar, status_text):
     import time  # Import time for sleep in example (remove in production)
