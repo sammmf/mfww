@@ -166,7 +166,7 @@ def run_machine_learning_pipeline(ml_data, configuration, selected_target, progr
         progress_bar.progress(current_step / total_steps)
 
         # Save the model
-        model_filename = os.path.join(dropbox_folder_path, 'trained_model.joblib')
+        model_filename = os.path.join(/Work/McCall_Farms/McCall_Shared_Data, 'trained_model.joblib')
 
         # Check if model file already exists
         if os.path.exists(model_filename):
