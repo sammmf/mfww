@@ -10,6 +10,8 @@ from sklearn.feature_selection import RFECV
 import plotly.express as px
 from datetime import datetime
 import logging
+import joblib as joblib
+import os as os
 
 # Configure logging
 logging.basicConfig(
@@ -162,6 +164,19 @@ def run_machine_learning_pipeline(ml_data, configuration, selected_target, progr
         model_results = train_and_evaluate_model(X[selected_features], y, best_params)
         current_step += 1
         progress_bar.progress(current_step / total_steps)
+
+        # Save the model
+        model_filename = os.path.join(dropbox_folder_path, 'trained_model.joblib')
+
+        # Check if model file already exists
+        if os.path.exists(model_filename):
+            overwrite = st.checkbox("A trained model already exists. Overwrite?", value=False)
+            if overwrite:
+                save_model(model_results['model'], model_filename)
+            else:
+                st.info("Model was not saved. Uncheck the box to save the model.")
+        else:
+            save_model(model_results['model'], model_filename)
 
         # Step 7: Calculate Feature Importances
         status_text.text("Step 7/7: Calculating feature importances...")
