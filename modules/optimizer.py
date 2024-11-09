@@ -12,7 +12,7 @@ def run_process_optimizer(ml_data, configuration, model):
     st.header("Process Optimizer")
  
     # Path to the model file
-    model_filename = os.path.join(/Work/McCall_Farms/McCall_Shared_Data, 'trained_model.joblib')
+    model_filename = os.path.join('/Work/McCall_Farms/McCall_Shared_Data', 'trained_model.joblib')
 
     # Load the model if not in session state
     if 'trained_model' not in st.session_state:
