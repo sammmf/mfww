@@ -134,11 +134,16 @@ def run_machine_learning_pipeline(ml_data, configuration, selected_target, progr
         current_step += 1
         progress_bar.progress(current_step / total_steps)
 
-        # Step 3: Combine Correlated Features
-        status_text.text("Step 3/7: Combining correlated features...")
-        X = combine_correlated_features(X, correlated_groups)
+        # Step 3: Select Features from Correlated Groups
+        status_text.text("Step 3/7: Selecting features from correlated groups...")
+        # Retrieve adjustable features from configuration
+        adjustable_features = list(configuration.get('adjustable_features', {}).keys())
+        X, dropped_features = select_features_from_correlated_groups(X, correlated_groups, adjustable_features)
         current_step += 1
         progress_bar.progress(current_step / total_steps)
+
+        # Log the dropped features
+        logs = log_dropped_features(dropped_features)
 
         # Step 4: Feature Selection
         status_text.text("Step 4/7: Performing feature selection...")
@@ -240,28 +245,75 @@ def get_correlated_feature_groups(X, threshold=0.8):
                 visited.add(col)
     return correlated_groups
 
-def combine_correlated_features(X, correlated_groups):
+def select_features_from_correlated_groups(X, correlated_groups, adjustable_features):
     """
-    Combine correlated features by averaging them to create new features.
-
+    Select one feature from each group of highly correlated features to keep.
+    
     Parameters:
     - X: DataFrame of features.
-    - correlated_groups: A list of lists containing groups of correlated features.
+    - correlated_groups: List of lists containing groups of correlated features.
+    - adjustable_features: List of adjustable feature names.
+    
+    Returns:
+    - X_selected: DataFrame with selected features.
+    - dropped_features: List of features that were dropped.
+    """
+    features_to_keep = set(X.columns)
+    dropped_features = []
+
+    for group in correlated_groups:
+        # Exclude groups with adjustable features from dropping
+        if any(feature in adjustable_features for feature in group):
+            continue  # Keep all features in this group
+        else:
+            # For groups without adjustable features, select one feature to keep
+            # For simplicity, we can keep the feature with the highest correlation with the target
+            # Alternatively, you can use domain knowledge or feature importance
+            feature_to_keep = select_most_useful_feature(group, X)
+            # Drop the other features in the group
+            features_to_drop = set(group) - {feature_to_keep}
+            features_to_keep -= features_to_drop
+            dropped_features.extend(features_to_drop)
+
+    X_selected = X[list(features_to_keep)]
+    return X_selected, dropped_features
+
+def select_most_useful_feature(group, X):
+    """
+    Select the most useful feature from a group of correlated features.
+    For simplicity, select the feature with the highest variance.
+    You can replace this with a more sophisticated method if needed.
+    
+    Parameters:
+    - group: List of feature names in the correlated group.
+    - X: DataFrame of features.
+    
+    Returns:
+    - feature_to_keep: Name of the selected feature to keep.
+    """
+    variances = X[group].var()
+    feature_to_keep = variances.idxmax()
+    return feature_to_keep
+
+def log_dropped_features(dropped_features):
+    """
+    Log the features that were dropped during feature selection.
+
+    Parameters:
+    - dropped_features: List of feature names that were dropped.
 
     Returns:
-    - X_combined: DataFrame with combined features.
+    - logs: List of log messages.
     """
-    X_combined = X.copy()
-    for group in correlated_groups:
-        if len(group) > 1:
-            # Create a new feature name by joining original feature names
-            new_feature_name = '_'.join(group) + '_avg'
-            # Compute the average of the features in the group
-            X_combined[new_feature_name] = X[group].mean(axis=1)
-            # Drop the original features
-            X_combined = X_combined.drop(columns=group)
-    return X_combined
-
+    logs = []
+    if dropped_features:
+        logs.append("Dropped the following correlated features:")
+        for feature in dropped_features:
+            logs.append(f" - {feature}")
+    else:
+        logs.append("No features were dropped.")
+    return logs
+    
 def perform_feature_selection(X, y):
     """
     Perform Recursive Feature Elimination with Cross-Validation (RFECV) to select features.
