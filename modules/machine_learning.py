@@ -20,6 +20,21 @@ logging.basicConfig(
     format='%(asctime)s:%(levelname)s:%(message)s'
 )
 
+# Define the save_model function here
+def save_model(model, model_filename):
+    """
+    Save the trained model to a file.
+
+    Parameters:
+    - model: The trained model object.
+    - model_filename: The path to the file where the model will be saved.
+    """
+    try:
+        joblib.dump(model, model_filename)
+        st.success(f"Model saved to {model_filename}")
+    except Exception as e:
+        st.error(f"An error occurred while saving the model: {e}")
+
 def run_machine_learning_tab(ml_data, configuration):
     """
     This function defines the Machine Learning tab in the Streamlit app.
