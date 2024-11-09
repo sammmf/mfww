@@ -143,3 +143,27 @@ def download_data_file(dbx):
     except dropbox.exceptions.ApiError as err:
         st.error(f"Failed to download file from Dropbox: {err}")
         return False
+
+def upload_file_to_dropbox(dbx, local_file_path, dropbox_destination_path):
+    """
+    Upload a local file to Dropbox.
+
+    :param dbx: Initialized Dropbox client
+    :param local_file_path: Path to the local file
+    :param dropbox_destination_path: Destination path in Dropbox
+    :return: True if successful, False otherwise
+    """
+    import dropbox
+
+    try:
+        with open(local_file_path, 'rb') as f:
+            dbx.files_upload(
+                f.read(),
+                dropbox_destination_path,
+                mode=dropbox.files.WriteMode.overwrite
+            )
+        return True
+    except Exception as e:
+        st.error(f"Failed to upload file to Dropbox: {e}")
+        return False
+
