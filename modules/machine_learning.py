@@ -12,6 +12,7 @@ from datetime import datetime
 import logging
 import joblib
 import os
+from modules import dropbox_integration
 
 # Configure logging
 logging.basicConfig(
@@ -23,17 +24,35 @@ logging.basicConfig(
 # Define the save_model function here
 def save_model(model, model_filename):
     """
-    Save the trained model to a file.
+    Save the trained model to a file and upload to Dropbox.
 
     Parameters:
     - model: The trained model object.
     - model_filename: The path to the file where the model will be saved.
     """
     try:
+        # Save the model locally
         joblib.dump(model, model_filename)
-        st.success(f"Model saved to {model_filename}")
+        st.success(f"Model saved locally to {model_filename}")
+
+        # Initialize Dropbox client
+        dbx = dropbox_integration.initialize_dropbox()
+
+        # Upload the model to Dropbox
+        dropbox_path = '/Work/McCall_Farms/McCall_Shared_Data/trained_model.joblib'
+        upload_success = dropbox_integration.upload_file_to_dropbox(
+            dbx,
+            model_filename,
+            dropbox_path
+        )
+
+        if upload_success:
+            st.success(f"Model uploaded to Dropbox at {dropbox_path}")
+        else:
+            st.error("Failed to upload model to Dropbox.")
     except Exception as e:
-        st.error(f"An error occurred while saving the model: {e}")
+        st.error(f"An error occurred while saving or uploading the model: {e}")
+
 
 def run_machine_learning_tab(ml_data, configuration):
     """
@@ -181,7 +200,8 @@ def run_machine_learning_pipeline(ml_data, configuration, selected_target, progr
         progress_bar.progress(current_step / total_steps)
 
         # Save the model
-        model_filename = os.path.join('/Work/McCall_Farms/McCall_Shared_Data', 'trained_model.joblib')
+        model_filename = 'trained_model.joblib'  # Or specify a desired local path
+        save_model(model_results['model'], model_filename)
 
         # Check if model file already exists
         if os.path.exists(model_filename):
