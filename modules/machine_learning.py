@@ -51,8 +51,8 @@ def run_machine_learning_tab(ml_data, configuration):
             if results['logs']:
                 for log in results['logs']:
                     st.write(log)
-                else:
-                    st.write("No features were combined.")
+            else:
+                st.write("No features were combined.")
 
             # Display Selected Features
             st.subheader("Selected Features")
@@ -180,235 +180,235 @@ def run_machine_learning_pipeline(ml_data, configuration, selected_target, progr
         st.error(f"Exception: {e}")
         raise e  # Re-raise the exception to be caught in the calling function
 
-# Rest of your function definitions (preprocess_data_for_modeling, get_correlated_feature_groups, etc.)
+# Rest of your function definitions at the module level (no indentation)
 
-    def preprocess_data_for_modeling(ml_data, selected_target):
-        """
-        Preprocess the data for modeling.
-        """
-        # Exclude future dates
-        today = pd.Timestamp(datetime.today().date())
-        ml_data = ml_data[ml_data['date'] <= today]
+def preprocess_data_for_modeling(ml_data, selected_target):
+    """
+    Preprocess the data for modeling.
+    """
+    # Exclude future dates
+    today = pd.Timestamp(datetime.today().date())
+    ml_data = ml_data[ml_data['date'] <= today]
 
-        # Include all features except 'date' and the target variable
-        features = [col for col in ml_data.columns if col not in ['date', selected_target]]
+    # Include all features except 'date' and the target variable
+    features = [col for col in ml_data.columns if col not in ['date', selected_target]]
 
-        # Prepare data
-        X = ml_data[features]
-        y = ml_data[selected_target]
+    # Prepare data
+    X = ml_data[features]
+    y = ml_data[selected_target]
 
-        # Handle missing values
-        X = X.interpolate(method='linear', limit_direction='both').fillna(method='ffill').fillna(method='bfill')
-        y = y.interpolate(method='linear', limit_direction='both').fillna(method='ffill').fillna(method='bfill')
+    # Handle missing values
+    X = X.interpolate(method='linear', limit_direction='both').fillna(method='ffill').fillna(method='bfill')
+    y = y.interpolate(method='linear', limit_direction='both').fillna(method='ffill').fillna(method='bfill')
 
-        return X, y
+    return X, y
 
-    def get_correlated_feature_groups(X, threshold=0.8):
-        """
-        Identify groups of highly correlated features without overlapping columns.
+def get_correlated_feature_groups(X, threshold=0.8):
+    """
+    Identify groups of highly correlated features without overlapping columns.
 
-        Parameters:
-        - X: DataFrame of features.
-        - threshold: Correlation threshold to consider features as highly correlated.
+    Parameters:
+    - X: DataFrame of features.
+    - threshold: Correlation threshold to consider features as highly correlated.
 
-        Returns:
-        - correlated_groups: A list of lists containing groups of correlated features.
-        """
-        corr_matrix = X.corr().abs()
-        correlated_groups = []
-        visited = set()
+    Returns:
+    - correlated_groups: A list of lists containing groups of correlated features.
+    """
+    corr_matrix = X.corr().abs()
+    correlated_groups = []
+    visited = set()
 
-        for col in corr_matrix.columns:
-            if col not in visited:
-                # Find features correlated with 'col' beyond the threshold and not yet visited
-                high_corr_features = corr_matrix.loc[~corr_matrix.index.isin(visited), col]
-                correlated_features = high_corr_features[high_corr_features > threshold].index.tolist()
-                correlated_features = [f for f in correlated_features if f != col]
-                if correlated_features:
-                    group = [col] + correlated_features
-                    correlated_groups.append(group)
-                    visited.update(group)
-                else:
-                    visited.add(col)
-        return correlated_groups
-        
-    def combine_correlated_features(X, correlated_groups):
-        """
-        Combine correlated features by averaging them to create new features.
+    for col in corr_matrix.columns:
+        if col not in visited:
+            # Find features correlated with 'col' beyond the threshold and not yet visited
+            high_corr_features = corr_matrix.loc[~corr_matrix.index.isin(visited), col]
+            correlated_features = high_corr_features[high_corr_features > threshold].index.tolist()
+            correlated_features = [f for f in correlated_features if f != col]
+            if correlated_features:
+                group = [col] + correlated_features
+                correlated_groups.append(group)
+                visited.update(group)
+            else:
+                visited.add(col)
+    return correlated_groups
 
-        Parameters:
-        - X: DataFrame of features.
-        - correlated_groups: A list of lists containing groups of correlated features.
+def combine_correlated_features(X, correlated_groups):
+    """
+    Combine correlated features by averaging them to create new features.
 
-        Returns:
-        - X_combined: DataFrame with combined features.
-        """
-        X_combined = X.copy()
+    Parameters:
+    - X: DataFrame of features.
+    - correlated_groups: A list of lists containing groups of correlated features.
+
+    Returns:
+    - X_combined: DataFrame with combined features.
+    """
+    X_combined = X.copy()
+    for group in correlated_groups:
+        if len(group) > 1:
+            # Create a new feature name by joining original feature names
+            new_feature_name = '_'.join(group) + '_avg'
+            # Compute the average of the features in the group
+            X_combined[new_feature_name] = X[group].mean(axis=1)
+            # Drop the original features
+            X_combined = X_combined.drop(columns=group)
+    return X_combined
+
+def perform_feature_selection(X, y):
+    """
+    Perform Recursive Feature Elimination with Cross-Validation (RFECV) to select features.
+
+    Parameters:
+    - X: DataFrame of features.
+    - y: Series of target variable.
+
+    Returns:
+    - selected_features: List of selected feature names.
+    - feature_ranking: Series with feature rankings.
+    """
+    # Initialize the model
+    xgb_model = xgb.XGBRegressor(
+        objective='reg:squarederror',
+        verbosity=0
+    )
+
+    # Use TimeSeriesSplit for cross-validation due to time series data
+    tscv = TimeSeriesSplit(n_splits=5)
+
+    # Perform RFECV
+    rfecv = RFECV(
+        estimator=xgb_model,
+        step=1,
+        cv=tscv,
+        scoring='r2',
+        n_jobs=-1,
+        min_features_to_select=5  # Ensure we have at least 5 features
+    )
+
+    rfecv.fit(X, y)
+
+    # Get selected features and their rankings
+    selected_features = X.columns[rfecv.support_].tolist()
+    feature_ranking = pd.Series(rfecv.ranking_, index=X.columns).sort_values()
+
+    return selected_features, feature_ranking
+
+def hyperparameter_tuning(X, y):
+    """
+    Perform hyperparameter tuning using GridSearchCV.
+
+    Parameters:
+    - X: DataFrame of features.
+    - y: Series of target variable.
+
+    Returns:
+    - best_params: Dictionary of best hyperparameters found.
+    """
+    xgb_model = xgb.XGBRegressor(objective='reg:squarederror', verbosity=0)
+
+    param_grid = {
+        'learning_rate': [0.01, 0.05, 0.1],
+        'max_depth': [3, 5, 7],
+        'n_estimators': [100, 200, 300],
+        'subsample': [0.8, 1],
+        'colsample_bytree': [0.8, 1],
+    }
+
+    tscv = TimeSeriesSplit(n_splits=5)
+
+    grid_search = GridSearchCV(
+        estimator=xgb_model,
+        param_grid=param_grid,
+        cv=tscv,
+        scoring='r2',
+        n_jobs=-1
+    )
+
+    grid_search.fit(X, y)
+
+    return grid_search.best_params_
+
+def train_and_evaluate_model(X, y, params):
+    """
+    Train the model with the selected features and best hyperparameters, then evaluate its performance.
+
+    Parameters:
+    - X: DataFrame of features.
+    - y: Series of target variable.
+    - params: Dictionary of hyperparameters.
+
+    Returns:
+    - results: Dictionary containing the trained model and evaluation metrics.
+    """
+    # Split data (keeping the time series order)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, shuffle=False
+    )
+
+    # Initialize the model with best parameters
+    xgb_model = xgb.XGBRegressor(
+        objective='reg:squarederror',
+        verbosity=0,
+        **params
+    )
+
+    # Train the model
+    xgb_model.fit(X_train, y_train)
+
+    # Make predictions
+    y_pred = xgb_model.predict(X_test)
+
+    # Evaluate model
+    rmse = np.sqrt(mean_squared_error(y_test, y_pred))
+    r2 = r2_score(y_test, y_pred)
+
+    # Prepare results
+    results = {
+        'model': xgb_model,
+        'rmse': rmse,
+        'r2': r2,
+        'y_test': y_test,
+        'y_pred': y_pred,
+        'X_test': X_test
+    }
+
+    return results
+
+def calculate_feature_importances(model, selected_features):
+    """
+    Calculate feature importances from the trained model.
+
+    Parameters:
+    - model: Trained XGBoost model.
+    - selected_features: List of feature names used in the model.
+
+    Returns:
+    - importance_df: DataFrame containing features and their importance scores.
+    """
+    importance = model.get_booster().get_score(importance_type='gain')
+    importance_df = pd.DataFrame({
+        'Feature': [f for f in selected_features if f in importance],
+        'Importance': [importance.get(f, 0) for f in selected_features if f in importance]
+    })
+    importance_df = importance_df.sort_values(by='Importance', ascending=False)
+    return importance_df
+
+def log_feature_combination(correlated_groups):
+    """
+    Log the groups of features that were combined.
+
+    Parameters:
+    - correlated_groups: A list of lists containing groups of correlated features.
+
+    Returns:
+    - logs: A list of log messages.
+    """
+    logs = []
+    if correlated_groups:
+        logs.append("Combined correlated features (threshold > 0.8):")
         for group in correlated_groups:
             if len(group) > 1:
-                # Create a new feature name by joining original feature names
-                new_feature_name = '_'.join(group) + '_avg'
-                # Compute the average of the features in the group
-                X_combined[new_feature_name] = X[group].mean(axis=1)
-                # Drop the original features
-                X_combined = X_combined.drop(columns=group)
-        return X_combined
-
-    def perform_feature_selection(X, y):
-        """
-        Perform Recursive Feature Elimination with Cross-Validation (RFECV) to select features.
-
-        Parameters:
-        - X: DataFrame of features.
-        - y: Series of target variable.
-
-        Returns:
-        - selected_features: List of selected feature names.
-        - feature_ranking: Series with feature rankings.
-        """
-        # Initialize the model
-        xgb_model = xgb.XGBRegressor(
-            objective='reg:squarederror',
-            verbosity=0
-        )
-
-        # Use TimeSeriesSplit for cross-validation due to time series data
-        tscv = TimeSeriesSplit(n_splits=5)
-
-        # Perform RFECV
-        rfecv = RFECV(
-            estimator=xgb_model,
-            step=1,
-            cv=tscv,
-            scoring='r2',
-            n_jobs=-1,
-            min_features_to_select=5  # Ensure we have at least 5 features
-        )
-
-        rfecv.fit(X, y)
-
-        # Get selected features and their rankings
-        selected_features = X.columns[rfecv.support_].tolist()
-        feature_ranking = pd.Series(rfecv.ranking_, index=X.columns).sort_values()
-
-        return selected_features, feature_ranking
-
-    def hyperparameter_tuning(X, y):
-        """
-        Perform hyperparameter tuning using GridSearchCV.
-
-        Parameters:
-        - X: DataFrame of features.
-        - y: Series of target variable.
-
-        Returns:
-        - best_params: Dictionary of best hyperparameters found.
-        """
-        xgb_model = xgb.XGBRegressor(objective='reg:squarederror', verbosity=0)
-
-        param_grid = {
-            'learning_rate': [0.01, 0.05, 0.1],
-            'max_depth': [3, 5, 7],
-            'n_estimators': [100, 200, 300],
-            'subsample': [0.8, 1],
-            'colsample_bytree': [0.8, 1],
-        }
-
-        tscv = TimeSeriesSplit(n_splits=5)
-
-        grid_search = GridSearchCV(
-            estimator=xgb_model,
-            param_grid=param_grid,
-            cv=tscv,
-            scoring='r2',
-            n_jobs=-1
-        )
-
-        grid_search.fit(X, y)
-
-        return grid_search.best_params_
-
-    def train_and_evaluate_model(X, y, params):
-        """
-        Train the model with the selected features and best hyperparameters, then evaluate its performance.
-
-        Parameters:
-        - X: DataFrame of features.
-        - y: Series of target variable.
-        - params: Dictionary of hyperparameters.
-
-        Returns:
-        - results: Dictionary containing the trained model and evaluation metrics.
-        """
-        # Split data (keeping the time series order)
-        X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=0.2, shuffle=False
-        )
-
-        # Initialize the model with best parameters
-        xgb_model = xgb.XGBRegressor(
-            objective='reg:squarederror',
-            verbosity=0,
-            **params
-        )
-
-        # Train the model
-        xgb_model.fit(X_train, y_train)
-
-        # Make predictions
-        y_pred = xgb_model.predict(X_test)
-
-        # Evaluate model
-        rmse = np.sqrt(mean_squared_error(y_test, y_pred))
-        r2 = r2_score(y_test, y_pred)
-
-        # Prepare results
-        results = {
-            'model': xgb_model,
-            'rmse': rmse,
-            'r2': r2,
-            'y_test': y_test,
-            'y_pred': y_pred,
-            'X_test': X_test
-        }
-
-        return results
-
-    def calculate_feature_importances(model, selected_features):
-        """
-        Calculate feature importances from the trained model.
-
-        Parameters:
-        - model: Trained XGBoost model.
-        - selected_features: List of feature names used in the model.
-
-        Returns:
-        - importance_df: DataFrame containing features and their importance scores.
-        """
-        importance = model.get_booster().get_score(importance_type='gain')
-        importance_df = pd.DataFrame({
-            'Feature': [f for f in selected_features if f in importance],
-            'Importance': [importance.get(f, 0) for f in selected_features if f in importance]
-        })
-        importance_df = importance_df.sort_values(by='Importance', ascending=False)
-        return importance_df
-
-    def log_feature_combination(correlated_groups):
-        """
-        Log the groups of features that were combined.
-
-        Parameters:
-        - correlated_groups: A list of lists containing groups of correlated features.
-
-        Returns:
-        - logs: A list of log messages.
-        """
-        logs = []
-        if correlated_groups:
-            logs.append("Combined correlated features (threshold > 0.8):")
-            for group in correlated_groups:
-                if len(group) > 1:
-                    logs.append(f" - Combined features {', '.join(group)} into a single feature by averaging.")
-        else:
-            logs.append("No correlated features found to combine.")
-        return logs
+                logs.append(f" - Combined features {', '.join(group)} into a single feature by averaging.")
+    else:
+        logs.append("No correlated features found to combine.")
+    return logs
