@@ -10,8 +10,8 @@ from sklearn.feature_selection import RFECV
 import plotly.express as px
 from datetime import datetime
 import logging
-import joblib as joblib
-import os as os
+import joblib
+import os
 
 # Configure logging
 logging.basicConfig(
