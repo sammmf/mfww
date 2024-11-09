@@ -54,7 +54,7 @@ def run_machine_learning_tab(ml_data, configuration):
             st.session_state['trained_model'] = results['model_results']['model']
 
             # Display Logs
-            st.subheader("Feature Combination Logs")
+            st.subheader("Feature Selection Logs")
             if results['logs']:
                 for log in results['logs']:
                     st.write(log)
@@ -168,9 +168,6 @@ def run_machine_learning_pipeline(ml_data, configuration, selected_target, progr
         feature_importances = calculate_feature_importances(model_results['model'], selected_features)
         current_step += 1
         progress_bar.progress(current_step / total_steps)
-
-        # Prepare Logs
-        logs = log_feature_combination(correlated_groups)
 
         # Finalize
         progress_bar.progress(1.0)
