@@ -8,7 +8,21 @@ import xgboost as xgb
 
 def run_process_optimizer(ml_data, configuration, model):
     st.header("Process Optimizer")
+ 
+    # Path to the model file
+    model_filename = os.path.join(dropbox_folder_path, 'trained_model.joblib')
 
+    # Load the model if not in session state
+    if 'trained_model' not in st.session_state:
+        trained_model = load_model(model_filename)
+        if trained_model is not None:
+            st.session_state['trained_model'] = trained_model
+        else:
+            st.error("Trained model not found. Please run the machine learning pipeline first.")
+            return
+    else:
+        trained_model = st.session_state['trained_model']
+        
     # Get adjustable features
     adjustable_features = list(configuration.get('adjustable_features', {}).keys())
     if not adjustable_features:
