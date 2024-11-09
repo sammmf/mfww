@@ -8,6 +8,29 @@ import xgboost as xgb
 import joblib
 import os
 
+# Define the load_model function here
+def load_model(model_filename):
+    """
+    Load the trained model from a file.
+
+    Parameters:
+    - model_filename: The path to the file where the model is saved.
+
+    Returns:
+    - model: The loaded model object.
+    """
+    if os.path.exists(model_filename):
+        try:
+            model = joblib.load(model_filename)
+            st.success(f"Model loaded from {model_filename}")
+            return model
+        except Exception as e:
+            st.error(f"An error occurred while loading the model: {e}")
+            return None
+    else:
+        st.error(f"Model file not found at {model_filename}")
+        return None
+
 def run_process_optimizer(ml_data, configuration, model):
     st.header("Process Optimizer")
  
