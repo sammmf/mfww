@@ -10,13 +10,13 @@ def run_process_optimizer(ml_data, configuration, model):
     st.header("Process Optimizer")
 
     # Get adjustable features
-    adjustable_features = configuration[configuration['adjustability'] == 'Variable']['feature_name'].tolist()
+    adjustable_features = list(configuration.get('adjustable_features', {}).keys())
     if not adjustable_features:
         st.error("No adjustable features found in the configuration.")
         return
 
     # Get fixed features
-    fixed_features = configuration[configuration['adjustability'] == 'Fixed']['feature_name'].tolist()
+    fixed_features = list(configuration.get('fixed_features', {}).keys())
 
     # Get min and max bounds for adjustable features
     bounds = get_bounds(configuration, adjustable_features)
@@ -60,11 +60,14 @@ def run_process_optimizer(ml_data, configuration, model):
                 st.error("Optimization failed. Please check your inputs.")
 
 def get_bounds(configuration, adjustable_features):
-    config = configuration.set_index('feature_name')
     bounds = []
     for feature in adjustable_features:
-        min_val = config.loc[feature, 'min']
-        max_val = config.loc[feature, 'max']
+        feature_config = configuration['adjustable_features'][feature]
+        min_val = feature_config.get('min', None)
+        max_val = feature_config.get('max', None)
+        if min_val is None or max_val is None:
+            st.error(f"Bounds not specified for feature '{feature}'.")
+            return None
         bounds.append((min_val, max_val))
     return bounds
 
