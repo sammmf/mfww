@@ -11,3 +11,5 @@ scikit-learn
 scipy
 flask
 firebase-admin
+joblib
+os
