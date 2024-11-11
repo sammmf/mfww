@@ -13,7 +13,7 @@ import logging
 import joblib
 import os
 from modules import dropbox_integration
-import dropbox as dbx
+import dropbox
 
 # Configure logging
 logging.basicConfig(
