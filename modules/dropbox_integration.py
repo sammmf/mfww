@@ -18,7 +18,7 @@ def initialize_dropbox():
     except KeyError as e:
         st.error(f"Missing key in st.secrets: {e}")
         st.stop()
-        return None
+        return dbx
 
     # Retrieve tokens from Firebase
     tokens = firebase_integration.get_tokens_from_firebase()
