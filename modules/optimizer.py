@@ -48,17 +48,25 @@ def run_process_optimizer(ml_data, configuration, model):
     else:
         trained_model = st.session_state['trained_model']
         
-    # Get adjustable features
-    adjustable_features = list(configuration.get('adjustable_features', {}).keys())
+    # Get adjustable features by filtering the configuration DataFrame
+    adjustable_features = configuration[configuration['adjustability'] == 'variable']['feature_name'].tolist()
     if not adjustable_features:
         st.error("No adjustable features found in the configuration.")
         return
 
-    # Get fixed features
-    fixed_features = list(configuration.get('fixed_features', {}).keys())
+    # Verify that all adjustable features are present in ml_data
+    missing_features = [feature for feature in adjustable_features if feature not in ml_data.columns]
+    if missing_features:
+        st.error(f"The following adjustable features are missing from ml_data: {missing_features}")
+        return
 
     # Get min and max bounds for adjustable features
     bounds = get_bounds(configuration, adjustable_features)
+    if bounds is None:
+        return  # Error messages are handled within get_bounds
+
+    # Get fixed features
+    fixed_features = configuration[configuration['adjustability'] != 'variable']['feature_name'].tolist()
 
     # User selects the target feature to optimize
     target_feature = st.selectbox("Select the target feature to optimize", ml_data.columns)
@@ -101,10 +109,14 @@ def run_process_optimizer(ml_data, configuration, model):
 def get_bounds(configuration, adjustable_features):
     bounds = []
     for feature in adjustable_features:
-        feature_config = configuration['adjustable_features'][feature]
-        min_val = feature_config.get('min', None)
-        max_val = feature_config.get('max', None)
-        if min_val is None or max_val is None:
+        # Find the row in configuration DataFrame for this feature
+        feature_row = configuration[configuration['feature_name'] == feature]
+        if feature_row.empty:
+            st.error(f"Feature '{feature}' not found in configuration.")
+            return None
+        min_val = feature_row['min'].values[0]
+        max_val = feature_row['max'].values[0]
+        if pd.isnull(min_val) or pd.isnull(max_val):
             st.error(f"Bounds not specified for feature '{feature}'.")
             return None
         bounds.append((min_val, max_val))
