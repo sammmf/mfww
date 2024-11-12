@@ -43,7 +43,6 @@ def run_process_optimizer(ml_data, configuration):
 
     # Get adjustable features by filtering the configuration DataFrame
     adjustable_features = configuration[configuration['adjustability'] == 'variable']['feature_name'].tolist()
-    st.write("Adjustable Features:", adjustable_features)  # Debugging
 
     if not adjustable_features:
         st.error("No adjustable features found in the configuration.")
