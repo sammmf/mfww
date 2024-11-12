@@ -5,10 +5,10 @@ from modules.machine_learning import run_machine_learning_tab
 # Import other modules as needed
 
 # Set page configuration at the very top
-st.set_page_config(page_title="McCall Farms Dashboard", layout="wide")
+st.set_page_config(page_title="Wastewater Dashboard", layout="wide")
 
 def run_app():
-    st.title("Welcome to the McCall Farms Dashboard")
+    st.title("Welcome to the Wastewater Dashboard")
 
     # Prompt for 4-digit code
     if 'code' not in st.session_state:
