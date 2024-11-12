@@ -100,7 +100,7 @@ def run_process_optimizer(ml_data, configuration):
         return
 
     # Get adjustable features included in the model
-      adjustable_features = st.session_state.get('adjustable_features_in_model', [])
+    adjustable_features = st.session_state.get('adjustable_features_in_model', [])
     if not adjustable_features:
         st.error("No adjustable features included in the model. Optimization cannot proceed.")
         return
