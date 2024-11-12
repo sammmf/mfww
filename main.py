@@ -2,34 +2,47 @@ import streamlit as st
 import pandas as pd
 from modules import dropbox_integration
 from modules.machine_learning import run_machine_learning_tab
-# Import other modules as needed (e.g., data_query, process_optimizer)
+# Import other modules as needed
 
-# Set the page configuration at the top of the script
-st.set_page_config(page_title="Wastewater Dashboard", layout="wide")
+# Set page configuration at the very top
+st.set_page_config(page_title="McCall Farms Dashboard", layout="wide")
 
 def run_app():
-    st.title("Welcome to the Wastewater Dashboard")
+    st.title("Welcome to the McCall Farms Dashboard")
 
     # Prompt for 4-digit code
+    if 'code' not in st.session_state:
+        st.session_state['code'] = ''
+
     code = st.text_input("Please enter your 4-digit access code:", max_chars=4, type='password')
 
     if st.button("Login"):
         if code in dropbox_integration.facility_codes:
-            # Store the facility code and set logged_in to True
+            # Set session state variables
             st.session_state['facility_code'] = code
             st.session_state['logged_in'] = True
-            st.success("Access granted.")
-            # Since the script reruns with each interaction, the next run will load the dashboard
+            # Clear any previous messages
+            st.session_state['login_message'] = 'Access granted.'
         else:
-            st.error("Invalid code. Please try again.")
+            st.session_state['login_message'] = 'Invalid code. Please try again.'
+
+    # Display login message
+    if 'login_message' in st.session_state:
+        st.info(st.session_state['login_message'])
+
+    # Proceed to dashboard if logged in
+    if st.session_state.get('logged_in'):
+        run_dashboard()
 
 def run_dashboard():
+    st.title("McCall Farms Dashboard")
+
     # Add a logout button
     if st.sidebar.button("Logout"):
-        # Clear session state and rerun the app
+        # Clear session state and reload
         st.session_state.clear()
-        st.session_state['logged_in'] = False
-        st.experimental_rerun()
+        st.experimental_set_query_params()  # Reset query parameters
+        st.experimental_rerun()  # Rerun the script
 
     # Initialize Dropbox client
     dbx = dropbox_integration.initialize_dropbox()
@@ -38,7 +51,7 @@ def run_dashboard():
         return
 
     # Get the facility code from session state
-    facility_code = st.session_state['facility_code']
+    facility_code = st.session_state.get('facility_code')
     dropbox_file_path = dropbox_integration.facility_codes.get(facility_code)
 
     if not dropbox_file_path:
@@ -47,7 +60,6 @@ def run_dashboard():
 
     # Download the data file for the facility
     if dropbox_integration.download_data_file(dbx, dropbox_file_path):
-        st.success("Data file downloaded successfully.")
         # Load the data into your application
         ml_data, configuration = load_data_from_excel("daily_data.xlsx")
         if ml_data is not None and configuration is not None:
@@ -66,7 +78,6 @@ def load_data_from_excel(file_path):
         # Load ml_data and configuration from the Excel file
         ml_data = pd.read_excel(file_path, sheet_name='ml_data')
         configuration = pd.read_excel(file_path, sheet_name='configuration')
-        # Additional processing if necessary
         return ml_data, configuration
     except FileNotFoundError:
         st.error(f"The file '{file_path}' was not found.")
@@ -87,26 +98,28 @@ def display_tabs():
 
     with dashboard_tab:
         st.header("Dashboard")
-        # Add dashboard content here
+        st.write("Content for the Dashboard tab.")
 
     with data_query_tab:
         st.header("Data Query")
-        # Add data query content here
+        st.write("Content for the Data Query tab.")
 
     with machine_learning_tab:
         st.header("Machine Learning")
         # Use ml_data and configuration from session state
-        ml_data = st.session_state['ml_data']
-        configuration = st.session_state['configuration']
-        run_machine_learning_tab(ml_data, configuration)
+        ml_data = st.session_state.get('ml_data')
+        configuration = st.session_state.get('configuration')
+        if ml_data is not None and configuration is not None:
+            run_machine_learning_tab(ml_data, configuration)
+        else:
+            st.error("Data not available. Please log in again.")
 
     with process_optimizer_tab:
         st.header("Process Optimizer")
-        # Add process optimizer content here
+        st.write("Content for the Process Optimizer tab.")
 
-# Main application logic
 if __name__ == "__main__":
-    # Set up session state for 'logged_in' if not present
+    # Initialize 'logged_in' in session state if not present
     if 'logged_in' not in st.session_state:
         st.session_state['logged_in'] = False
 
