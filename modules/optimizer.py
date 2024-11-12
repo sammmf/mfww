@@ -9,6 +9,7 @@ import joblib
 import os
 from modules import dropbox_integration
 import tempfile
+import plotly.express as px
 
 def load_model_from_dropbox(dbx, dropbox_model_path):
     """
@@ -264,24 +265,6 @@ def display_optimization_results(
     if result.success:
         st.success("Optimization successful!")
 
-        # Display optimized controllable variables
-        st.subheader("Optimized Controllable Variables")
-        optimized_values = result.x
-        controllable_df = pd.DataFrame({
-            'Feature': adjustable_features,
-            'Optimized Value': optimized_values
-        })
-        st.table(controllable_df)
-
-        # Display fixed variables
-        st.subheader("Fixed Variables")
-        fixed_values = ml_data[fixed_features].iloc[-1].values
-        fixed_df = pd.DataFrame({
-            'Feature': fixed_features,
-            'Value': fixed_values
-        })
-        st.table(fixed_df)
-
         # Display optimized target feature value
         st.subheader(f"Optimized {target_feature}")
         if optimized_target_value is not None:
@@ -290,11 +273,92 @@ def display_optimization_results(
         else:
             st.error("Unable to compute optimized target value.")
 
+        # Provide visualizations
+        display_optimization_visuals(
+            result,
+            adjustable_features,
+            fixed_features,
+            ml_data,
+            optimized_target_value,
+            target_feature
+        )
+
         # Additional Metrics
-        st.subheader("Optimization Metrics")
-        st.write(f"Optimization Success: {result.success}")
-        st.write(f"Optimization Message: {result.message}")
-        st.write(f"Number of Iterations: {result.nit}")
+        with st.expander("Optimization Metrics"):
+            st.write(f"Optimization Success: {result.success}")
+            st.write(f"Optimization Message: {result.message}")
+            st.write(f"Number of Iterations: {result.nit}")
+
+        # Display fixed variables in a collapsible section
+        with st.expander("Fixed Variables"):
+            fixed_values = ml_data[fixed_features].iloc[-1].values
+            fixed_df = pd.DataFrame({
+                'Feature': fixed_features,
+                'Value': fixed_values
+            })
+            st.table(fixed_df)
+
+        # Display optimized controllable variables in a collapsible section
+        with st.expander("Optimized Controllable Variables"):
+            optimized_values = result.x
+            controllable_df = pd.DataFrame({
+                'Feature': adjustable_features,
+                'Optimized Value': optimized_values
+            })
+            st.table(controllable_df)
+
     else:
         st.error("Optimization did not converge.")
         st.write("Message:", result.message)
+
+def display_optimization_visuals(
+    result,
+    adjustable_features,
+    fixed_features,
+    ml_data,
+    optimized_target_value,
+    target_feature,
+    selected_features
+):
+    st.subheader("Optimization Visualization")
+
+    # Prepare data for visualization
+    # We'll compare the target feature before and after optimization
+    # For simplicity, let's assume we can simulate the original target value using the model
+
+    # Get the latest data point
+    latest_data = ml_data.iloc[-1].copy()
+
+    # Prepare input data for original prediction
+    original_input = latest_data[selected_features]
+
+    # Predict original target value
+    original_prediction = st.session_state['trained_model'].predict(pd.DataFrame([original_input]))[0]
+
+    # Prepare input data for optimized prediction
+    optimized_input = pd.Series(index=selected_features, dtype=float)
+    optimized_input[adjustable_features] = result.x
+    optimized_input[fixed_features] = latest_data[fixed_features].values
+    # For any remaining features, use the latest values
+    remaining_features = [feature for feature in selected_features if feature not in adjustable_features and feature not in fixed_features]
+    optimized_input[remaining_features] = latest_data[remaining_features].values
+
+    # Predict optimized target value (already calculated, but we can recompute for consistency)
+    optimized_prediction = optimized_target_value
+
+    # Create a DataFrame for visualization
+    comparison_df = pd.DataFrame({
+        'Scenario': ['Original', 'Optimized'],
+        target_feature: [original_prediction, optimized_prediction]
+    })
+
+    # Plot the comparison
+    fig = px.bar(
+        comparison_df,
+        x='Scenario',
+        y=target_feature,
+        text=target_feature,
+        title=f'Comparison of {target_feature} Before and After Optimization'
+    )
+    fig.update_traces(texttemplate='%{text:.2f}', textposition='auto')
+    st.plotly_chart(fig, use_container_width=True)
