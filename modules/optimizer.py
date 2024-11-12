@@ -102,6 +102,12 @@ def run_process_optimizer(ml_data, configuration):
     selected_features = st.session_state.get('selected_features', [])
     fixed_features = [feature for feature in selected_features if feature not in adjustable_features]
 
+     # Get selected features from the model
+    selected_features = st.session_state.get('selected_features', [])
+    if not selected_features:
+        st.error("Selected features are not available.")
+        return
+        
     # Verify that all adjustable features are present in ml_data
     missing_features = [feature for feature in adjustable_features if feature not in ml_data.columns]
     if missing_features:
@@ -146,7 +152,8 @@ def run_process_optimizer(ml_data, configuration):
                     ml_data,
                     optimized_target_value,
                     prediction_std,
-                    target_feature
+                    target_feature,
+                    selected_features
                 )
             else:
                 st.error("Optimization failed. Please check your inputs.")
@@ -260,7 +267,8 @@ def display_optimization_results(
     ml_data,
     optimized_target_value,
     prediction_std,
-    target_feature
+    target_feature,
+    selected_features
 ):
     if result.success:
         st.success("Optimization successful!")
