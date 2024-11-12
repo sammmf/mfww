@@ -170,13 +170,9 @@ def run_machine_learning_tab(ml_data, configuration):
     if st.session_state.get('ml_pipeline_ran', False):
         # You can add optimization code here if needed
         pass
-
+        
 def run_machine_learning_pipeline(ml_data, configuration, selected_target, progress_bar, status_text):
-    import time  # Import time for sleep in example (remove in production)
-    total_steps = 7
-    current_step = 0
-
-    def run_machine_learning_pipeline(ml_data, configuration, selected_target, progress_bar, status_text):
+    
     import time  # Import time for sleep in example (remove in production)
     total_steps = 7
     current_step = 0
