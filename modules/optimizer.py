@@ -120,9 +120,6 @@ def run_process_optimizer(ml_data, configuration):
     if bounds is None:
         return  # Error messages are handled within get_bounds
 
-    # Get fixed features
-    fixed_features = configuration[configuration['adjustability'] != 'variable']['feature_name'].tolist()
-
     # User selects the target feature to optimize
     target_feature = st.selectbox("Select the target feature to optimize", ml_data.columns)
 
