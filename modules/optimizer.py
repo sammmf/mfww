@@ -41,13 +41,6 @@ def load_model_from_dropbox(dbx, dropbox_model_path):
 def run_process_optimizer(ml_data, configuration):
     st.header("Process Optimizer")
 
-    # **Debugging: Display the configuration DataFrame**
-    st.write("Configuration DataFrame:")
-    st.dataframe(configuration)
-
-    # **Debugging: Display unique values in 'adjustability' column**
-    st.write("Unique values in 'adjustability' column:", configuration['adjustability'].unique())
-
     # Get adjustable features by filtering the configuration DataFrame
     adjustable_features = configuration[configuration['adjustability'] == 'variable']['feature_name'].tolist()
     st.write("Adjustable Features:", adjustable_features)  # Debugging
