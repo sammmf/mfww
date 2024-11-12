@@ -49,14 +49,6 @@ def run_dashboard():
 
     st.title("Wastewater Treatment Plant Dashboard")
 
-    # Add a logout button in the sidebar
-    if st.sidebar.button("Logout"):
-        # Clear session state to log out the user
-        for key in st.session_state.keys():
-            del st.session_state[key]
-        st.session_state['logged_in'] = False
-        # Streamlit will rerun the app automatically
-
     # Initialize Dropbox and download data
     dbx = dropbox_integration.initialize_dropbox()
     if not dbx:
