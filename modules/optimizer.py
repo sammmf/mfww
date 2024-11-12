@@ -280,7 +280,8 @@ def display_optimization_results(
             fixed_features,
             ml_data,
             optimized_target_value,
-            target_feature
+            target_feature,
+            selected_features
         )
 
         # Additional Metrics
