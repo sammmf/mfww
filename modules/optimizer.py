@@ -38,7 +38,7 @@ def load_model_from_dropbox(dbx, dropbox_model_path):
         st.error(f"An error occurred while loading the model: {e}")
         return None
 
-def run_process_optimizer(ml_data, configuration, model):
+def run_process_optimizer(ml_data, configuration):
     st.header("Process Optimizer")
 
     # Check if the user is logged in and get the facility code
