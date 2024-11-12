@@ -15,9 +15,9 @@ st.set_page_config(page_title="Wastewater Treatment Plant Dashboard", layout="wi
 
 # Define the mapping between codes and Dropbox file paths
 facility_codes = {
-    '1234': '/Work/McCall_Farms/Facility1/daily_data.xlsx',
-    '5678': '/Work/McCall_Farms/Facility2/daily_data.xlsx',
-    '9012': '/Work/McCall_Farms/Facility3/daily_data.xlsx',
+    '3876': '/Work/McCall_Farms/McCall_Shared_Data/daily_data.xlsx',
+    '7354': '/Work/sage/daily_data.xlsx',
+    '2381': '/Work/scp/daily_data.xlsx',
 }
 
 def run_dashboard():
