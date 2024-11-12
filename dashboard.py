@@ -1,3 +1,5 @@
+# dashboard.py
+
 import streamlit as st
 import pandas as pd
 from modules import dropbox_integration
@@ -8,34 +10,53 @@ from modules import visualization
 from modules import machine_learning
 from modules import optimizer
 
+# Set page configuration at the very top
+st.set_page_config(page_title="Wastewater Treatment Plant Dashboard", layout="wide")
+
+# Define the mapping between codes and Dropbox file paths
 facility_codes = {
-    '3876': '/Work/McCall_Farms/McCall_Shared_Data/daily_data.xlsx',
-    '7354': '/Work/sage/ww_data.xlsx',
-    '2381': '/Work/scp/ww_data.xlsx',
+    '1234': '/Work/McCall_Farms/Facility1/daily_data.xlsx',
+    '5678': '/Work/McCall_Farms/Facility2/daily_data.xlsx',
+    '9012': '/Work/McCall_Farms/Facility3/daily_data.xlsx',
 }
 
 def run_dashboard():
-    st.set_page_config(page_title="Wastewater Treatment Plant Dashboard", layout="wide")
-    
     # Check if the user is logged in
     if 'facility_code' not in st.session_state:
+        # Display the login screen
         st.title("Wastewater Treatment Plant Dashboard")
         st.write("Please enter your 4-digit access code to proceed.")
-        code = st.text_input("Access Code:", max_chars=4, type='password')
-        
-        if st.button("Login"):
+
+        # Use a form to capture user input and handle submission
+        with st.form(key='login_form'):
+            code = st.text_input("Access Code:", max_chars=4, type='password')
+            submit_button = st.form_submit_button(label='Login')
+
+        if submit_button:
             if code in facility_codes:
                 st.session_state['facility_code'] = code
+                st.session_state['logged_in'] = True
                 st.success("Access granted.")
-                st.experimental_rerun()  # Force rerun to load the dashboard
+                # No need to rerun; the app will rerun automatically
             else:
                 st.error("Invalid code. Please try again.")
+
         return  # Stop execution until the user logs in
 
     # User is logged in; proceed with the dashboard
     facility_code = st.session_state['facility_code']
     dropbox_file_path = facility_codes[facility_code]
-    
+
+    st.title("Wastewater Treatment Plant Dashboard")
+
+    # Add a logout button in the sidebar
+    if st.sidebar.button("Logout"):
+        # Clear session state to log out the user
+        for key in st.session_state.keys():
+            del st.session_state[key]
+        st.session_state['logged_in'] = False
+        # Streamlit will rerun the app automatically
+
     # Initialize Dropbox and download data
     dbx = dropbox_integration.initialize_dropbox()
     if not dbx:
