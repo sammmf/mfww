@@ -138,8 +138,7 @@ def download_data_file(dbx, dropbox_file_path):
     """
     try:
         metadata, res = dbx.files_download(dropbox_file_path)
-        local_filename = "daily_data.xlsx"
-        with open(local_filename, "wb") as f:
+        with open("daily_data.xlsx", "wb") as f:
             f.write(res.content)
         return True
     except dropbox.exceptions.ApiError as err:
