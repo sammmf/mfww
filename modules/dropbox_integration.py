@@ -7,6 +7,12 @@ import requests
 from modules import firebase_integration
 from dropbox.oauth import DropboxOAuth2FlowNoRedirect
 
+facility_codes = {
+    '3876': '/Work/McCall_Farms/McCall_Shared_Data/daily_data.xlsx',
+    '7354': '/Work/sage/ww_data.xlsx',
+    '2381': '/Work/scp/ww_data.xlsx',
+}
+
 def initialize_dropbox():
     """
     Initialize Dropbox client with automatic token refresh.
