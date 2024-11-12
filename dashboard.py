@@ -8,6 +8,12 @@ from modules import visualization
 from modules import machine_learning
 from modules import optimizer
 
+facility_codes = {
+    '3876': '/Work/McCall_Farms/McCall_Shared_Data/daily_data.xlsx',
+    '7354': '/Work/sage/ww_data.xlsx',
+    '2381': '/Work/scp/ww_data.xlsx',
+}
+
 def run_dashboard():
     st.set_page_config(page_title="Wastewater Treatment Plant Dashboard", layout="wide")
     st.title("Wastewater Treatment Plant Dashboard")
