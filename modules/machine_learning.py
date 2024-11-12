@@ -31,6 +31,16 @@ def save_model(model, model_filename):
     - model: The trained model object.
     - model_filename: The path to the file where the model will be saved.
     """
+# machine_learning.py
+
+def save_model(model, model_filename):
+    """
+    Save the trained model to a file and upload to Dropbox.
+
+    Parameters:
+    - model: The trained model object.
+    - model_filename: The path to the file where the model will be saved.
+    """
     try:
         # Save the model locally
         joblib.dump(model, model_filename)
@@ -39,8 +49,27 @@ def save_model(model, model_filename):
         # Initialize Dropbox client
         dbx = dropbox_integration.initialize_dropbox()
 
+        # Retrieve facility code from session state
+        if 'facility_code' not in st.session_state:
+            st.error("Facility code not found. Please log in again.")
+            return
+
+        facility_code = st.session_state['facility_code']
+
+        # Map facility codes to Dropbox model paths
+        facility_model_paths = {
+            '3876': '/Work/McCall_Farms/McCall_Shared_Data/trained_model.joblib',
+            '7354': '/sage/trained_model.joblib',
+            '2381': '/scp/trained_model.joblib',
+        }
+
+        if facility_code not in facility_model_paths:
+            st.error(f"No model path configured for facility code: {facility_code}")
+            return
+
+        dropbox_path = facility_model_paths[facility_code]
+
         # Upload the model to Dropbox
-        dropbox_path = '/Work/McCall_Farms/McCall_Shared_Data/trained_model.joblib'
         upload_success = dropbox_integration.upload_file_to_dropbox(
             dbx,
             model_filename,
@@ -53,7 +82,6 @@ def save_model(model, model_filename):
             st.error("Failed to upload model to Dropbox.")
     except Exception as e:
         st.error(f"An error occurred while saving or uploading the model: {e}")
-
 
 def run_machine_learning_tab(ml_data, configuration):
     """
