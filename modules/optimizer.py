@@ -197,8 +197,8 @@ def optimize_process(
         return None, None, None
 
     # Prepare any remaining features required by the model
-    remaining_features = set(selected_features) - set(adjustable_features) - set(fixed_features)
-    remaining_values = ml_data[list(remaining_features)].iloc[-1]
+    remaining_features = [feature for feature in selected_features if feature not in adjustable_features and feature not in fixed_features]
+    remaining_values = ml_data[remaining_features].iloc[-1]
 
     # Objective function
     def objective_function(x):
