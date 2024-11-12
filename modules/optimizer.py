@@ -223,9 +223,9 @@ def optimize_process(
             objective_function,
             bounds=bounds,
             strategy='best1bin',
-            maxiter=200,
-            popsize=5,
-            tol=0.05,
+            maxiter=500,
+            popsize=10,
+            tol=0.025,
             mutation=(0.5, 1),
             recombination=0.7,
             disp=False
