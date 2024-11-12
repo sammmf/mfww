@@ -227,7 +227,7 @@ def optimize_process(
             objective_function,
             initial_guess,
             bounds=bounds,
-            method='L-BFGS-B',  # Sequential Least Squares Programming
+            method='SLSQP',  # Sequential Least Squares Programming
             options={'disp': True, 'maxiter': 1000}
         )
 
