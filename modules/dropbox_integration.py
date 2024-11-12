@@ -134,16 +134,18 @@ def refresh_access_token(APP_KEY, refresh_token):
         st.error(f"Error refreshing access token: {response.text}")
         return None, None, None
 
-def download_data_file(dbx):
+def download_data_file(dbx, dropbox_file_path):
     """
-    Download the data file from Dropbox.
+    Download the data file from Dropbox based on the provided file path.
 
     :param dbx: Initialized Dropbox client
+    :param dropbox_file_path: Path to the data file in Dropbox
     :return: True if successful, False otherwise
     """
     try:
-        metadata, res = dbx.files_download("/Work/McCall_Farms/McCall_Shared_Data/daily_data.xlsx")
-        with open("daily_data.xlsx", "wb") as f:
+        metadata, res = dbx.files_download(dropbox_file_path)
+        local_filename = "daily_data.xlsx"
+        with open(local_filename, "wb") as f:
             f.write(res.content)
         return True
     except dropbox.exceptions.ApiError as err:
