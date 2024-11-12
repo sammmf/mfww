@@ -4,10 +4,11 @@ from dashboard import run_dashboard
 import streamlit as st
 from modules import dropbox_integration
 from modules.machine_learning import run_machine_learning_tab
+import pandas as pd
 # Import other modules as needed
 
 def run_app():
-    st.title("Welcome to the McCall Farms Dashboard")
+    st.title("Welcome to the Wastewater Dashboard")
 
     # Prompt for 4-digit code
     code = st.text_input("Please enter your 4-digit access code:", max_chars=4, type='password')
