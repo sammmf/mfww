@@ -16,15 +16,33 @@ facility_codes = {
 
 def run_dashboard():
     st.set_page_config(page_title="Wastewater Treatment Plant Dashboard", layout="wide")
-    st.title("Wastewater Treatment Plant Dashboard")
+    
+    # Check if the user is logged in
+    if 'facility_code' not in st.session_state:
+        st.title("Wastewater Treatment Plant Dashboard")
+        st.write("Please enter your 4-digit access code to proceed.")
+        code = st.text_input("Access Code:", max_chars=4, type='password')
+        
+        if st.button("Login"):
+            if code in facility_codes:
+                st.session_state['facility_code'] = code
+                st.success("Access granted.")
+                st.experimental_rerun()  # Force rerun to load the dashboard
+            else:
+                st.error("Invalid code. Please try again.")
+        return  # Stop execution until the user logs in
 
+    # User is logged in; proceed with the dashboard
+    facility_code = st.session_state['facility_code']
+    dropbox_file_path = facility_codes[facility_code]
+    
     # Initialize Dropbox and download data
     dbx = dropbox_integration.initialize_dropbox()
     if not dbx:
         st.error("Failed to initialize Dropbox.")
         return
 
-    data_downloaded = dropbox_integration.download_data_file(dbx)
+    data_downloaded = dropbox_integration.download_data_file(dbx, dropbox_file_path)
     if not data_downloaded:
         st.error("Failed to download data file from Dropbox.")
         return
