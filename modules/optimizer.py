@@ -190,15 +190,29 @@ def optimize_process(
     # Prepare fixed variables
     fixed_values = ml_data[fixed_features].iloc[-1]
 
+    # Get selected features from the model
+    selected_features = st.session_state.get('selected_features', [])
+    if not selected_features:
+        st.error("Selected features are not available.")
+        return None, None, None
+
+    # Prepare any remaining features required by the model
+    remaining_features = set(selected_features) - set(adjustable_features) - set(fixed_features)
+    remaining_values = ml_data[list(remaining_features)].iloc[-1]
+
     # Objective function
     def objective_function(x):
-        # Create a DataFrame with adjustable and fixed features
-        input_data = pd.Series(index=adjustable_features + fixed_features)
+        # Create a Series with all selected features
+        input_data = pd.Series(index=selected_features, dtype=float)
         input_data[adjustable_features] = x
         input_data[fixed_features] = fixed_values.values
+        input_data[remaining_features] = remaining_values.values
+
+        # Ensure input_data has all features the model expects
+        input_df = pd.DataFrame([input_data], columns=selected_features)
 
         # Predict using the model
-        prediction = model.predict(pd.DataFrame([input_data]))[0]
+        prediction = model.predict(input_df)[0]
 
         if optimization_goal == "Minimize":
             return prediction
@@ -218,9 +232,10 @@ def optimize_process(
         )
 
         # Get the optimized target value and prediction standard deviation
-        optimized_input = pd.Series(index=adjustable_features + fixed_features)
+        optimized_input = pd.Series(index=selected_features, dtype=float)
         optimized_input[adjustable_features] = result.x
         optimized_input[fixed_features] = fixed_values.values
+        optimized_input[remaining_features] = remaining_values.values
 
         # Get prediction and uncertainty
         optimized_target_value, prediction_std = predict_with_uncertainty(model, optimized_input)
