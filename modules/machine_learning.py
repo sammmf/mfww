@@ -176,6 +176,11 @@ def run_machine_learning_pipeline(ml_data, configuration, selected_target, progr
     total_steps = 7
     current_step = 0
 
+    def run_machine_learning_pipeline(ml_data, configuration, selected_target, progress_bar, status_text):
+    import time  # Import time for sleep in example (remove in production)
+    total_steps = 7
+    current_step = 0
+
     try:
         # Step 1: Preprocess Data
         status_text.text("Step 1/7: Preprocessing data...")
@@ -189,6 +194,9 @@ def run_machine_learning_pipeline(ml_data, configuration, selected_target, progr
         current_step += 1
         progress_bar.progress(current_step / total_steps)
 
+        # **Retrieve adjustable features from configuration**
+        adjustable_features = configuration[configuration['adjustability'] == 'variable']['feature_name'].tolist()
+
         # Step 3: Select Features from Correlated Groups
         status_text.text("Step 3/7: Selecting features from correlated groups...")
         X, dropped_features = select_features_from_correlated_groups(X, correlated_groups, adjustable_features)
@@ -197,9 +205,6 @@ def run_machine_learning_pipeline(ml_data, configuration, selected_target, progr
 
         # Log the dropped features
         logs = log_dropped_features(dropped_features)
-
-        # Retrieve adjustable features from configuration
-        adjustable_features = configuration[configuration['adjustability'] == 'variable']['feature_name'].tolist()
 
         # Step 4: Feature Selection
         status_text.text("Step 4/7: Performing feature selection...")
