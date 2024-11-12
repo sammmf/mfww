@@ -54,13 +54,6 @@ def run_process_optimizer(ml_data, configuration, model):
         st.error("No adjustable features found in the configuration.")
         return
 
-    # Debugging statement to print adjustable features
-    st.write("Filtered adjustable features:", configuration['adjustability'] == 'Variable'])
-
-    if not adjustable_features:
-        st.error("No adjustable features found in the configuration bro.")
-        return
-
     # Verify that all adjustable features are present in ml_data
     missing_features = [feature for feature in adjustable_features if feature not in ml_data.columns]
     if missing_features:
