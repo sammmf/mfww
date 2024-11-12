@@ -49,10 +49,10 @@ def run_process_optimizer(ml_data, configuration):
     st.write("Unique values in 'adjustability' column:", configuration['adjustability'].unique())
 
     # Get adjustable features by filtering the configuration DataFrame
-    adjustable_features = configuration[configuration['adjustability'] == 'variable']['feature_name'].tolist()
-    st.write("Adjustable Features:", adjustable_features)  # Debugging
+    adjustable_features_config = configuration[configuration['adjustability'] == 'variable']['feature_name'].tolist()
+    st.write("Adjustable Features from Configuration:", adjustable_features_config)  # Debugging
 
-    if not adjustable_features:
+    if not adjustable_features_config:
         st.error("No adjustable features found in the configuration.")
         return
 
@@ -93,14 +93,10 @@ def run_process_optimizer(ml_data, configuration):
     else:
         trained_model = st.session_state['trained_model']
 
-    # Get adjustable features by filtering the configuration DataFrame
-    adjustable_features = configuration[configuration['adjustability'] == 'variable']['feature_name'].tolist()
-    if not adjustable_features:
-        st.error("No adjustable features found in the configuration.")
-        return
-
-    # Get adjustable features included in the model
+    # **Retrieve adjustable features included in the model from session state**
     adjustable_features = st.session_state.get('adjustable_features_in_model', [])
+    st.write("Adjustable Features Included in Model:", adjustable_features)  # Debugging
+
     if not adjustable_features:
         st.error("No adjustable features included in the model. Optimization cannot proceed.")
         return
@@ -108,6 +104,7 @@ def run_process_optimizer(ml_data, configuration):
     # Get fixed features (those that are both fixed and included in the model)
     selected_features = st.session_state.get('selected_features', [])
     fixed_features = [feature for feature in selected_features if feature not in adjustable_features]
+    st.write("Fixed Features Included in Model:", fixed_features)  # Debugging
 
     # Verify that all adjustable features are present in ml_data
     missing_features = [feature for feature in adjustable_features if feature not in ml_data.columns]
@@ -247,19 +244,17 @@ def optimize_process(
 
 def predict_with_uncertainty(model, input_data):
     """
-    Predict the target value and estimate uncertainty using the model.
+    Predict the target value. Estimating uncertainty is not supported with the current model.
     """
-    # For XGBoost, we can use DMatrix and get the prediction standard deviation
     try:
-        # Convert input data to DMatrix
-        dmatrix = xgb.DMatrix(pd.DataFrame([input_data]))
+        # Convert input_data to DataFrame
+        input_df = pd.DataFrame([input_data])
         # Predict using the model
-        prediction = model.predict(dmatrix)
-        prediction_mean = prediction[0]
-        prediction_std = 0  # XGBoost does not provide prediction uncertainty by default
-        return prediction_mean, prediction_std
+        prediction = model.predict(input_df)[0]
+        prediction_std = 0  # Uncertainty estimation not available
+        return prediction, prediction_std
     except Exception as e:
-        st.error(f"Error calculating prediction uncertainty: {e}")
+        st.error(f"Error calculating prediction: {e}")
         return None, None
 
 def display_optimization_results(
@@ -292,11 +287,10 @@ def display_optimization_results(
         })
         st.table(fixed_df)
 
-        # Display optimized target feature value with confidence interval
+        # Display optimized target feature value
         st.subheader(f"Optimized {target_feature}")
-        confidence_interval = 1.96 * prediction_std  # For approximately 95% confidence
-        st.write(f"Predicted {target_feature}: {optimized_target_value:.3f} ± {confidence_interval:.3f}")
-        st.write(f"Confidence Interval (95%): [{optimized_target_value - confidence_interval:.3f}, {optimized_target_value + confidence_interval:.3f}]")
+        st.write(f"Predicted {target_feature}: {optimized_target_value:.3f}")
+        st.write("Note: Prediction uncertainty estimation is not available.")
 
         # Additional Metrics
         st.subheader("Optimization Metrics")
