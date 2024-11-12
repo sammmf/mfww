@@ -210,11 +210,18 @@ def run_machine_learning_pipeline(ml_data, configuration, selected_target, progr
         # Log the dropped features
         logs = log_dropped_features(dropped_features)
 
+        #Retrieve adjustable features from configuration
+        adjustable_features = configuration[configuration['adjustability' == 'variable']['feature_name'].tolist()
+                
         # Step 4: Feature Selection
         status_text.text("Step 4/7: Performing feature selection...")
         selected_features, feature_ranking = perform_feature_selection(X, y)
         current_step += 1
         progress_bar.progress(current_step / total_steps)
+
+        #Identify adjustable features included in the model
+        adjustable_features_in_model = [feature for feature in adjustable_features if feature in selected_features]
+        st.session_state['adjustable_features_in_model'] = adjustable_features_in_model
 
         # Step 5: Hyperparameter Tuning
         status_text.text("Step 5/7: Hyperparameter tuning (this may take several minutes)...")
