@@ -7,39 +7,69 @@ import numpy as np
 import xgboost as xgb
 import joblib
 import os
+from modules import dropbox_integration
+import tempfile
 
-# Define the load_model function here
-def load_model(model_filename):
+def load_model_from_dropbox(dbx, dropbox_model_path):
     """
-    Load the trained model from a file.
+    Download the trained model from Dropbox and load it.
 
     Parameters:
-    - model_filename: The path to the file where the model is saved.
+    - dbx: Dropbox client instance.
+    - dropbox_model_path: Path to the model file in Dropbox.
 
     Returns:
-    - model: The loaded model object.
+    - model: The loaded model object, or None if failed.
     """
-    if os.path.exists(model_filename):
-        try:
-            model = joblib.load(model_filename)
-            st.success(f"Model loaded from {model_filename}")
-            return model
-        except Exception as e:
-            st.error(f"An error occurred while loading the model: {e}")
-            return None
-    else:
-        st.error(f"Model file not found at {model_filename}")
+    try:
+        metadata, res = dbx.files_download(dropbox_model_path)
+        with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
+            tmp_file.write(res.content)
+            tmp_file_path = tmp_file.name
+
+        model = joblib.load(tmp_file_path)
+        os.unlink(tmp_file_path)  # Clean up the temporary file
+        st.success(f"Model loaded from Dropbox path: {dropbox_model_path}")
+        return model
+    except dropbox.exceptions.ApiError as err:
+        st.error(f"Failed to download model from Dropbox: {err}")
+        return None
+    except Exception as e:
+        st.error(f"An error occurred while loading the model: {e}")
         return None
 
 def run_process_optimizer(ml_data, configuration, model):
     st.header("Process Optimizer")
- 
-    # Path to the model file
-    model_filename = os.path.join('/Work/McCall_Farms/McCall_Shared_Data', 'trained_model.joblib')
+
+    # Check if the user is logged in and get the facility code
+    if 'facility_code' not in st.session_state:
+        st.error("Facility code not found. Please log in again.")
+        return
+
+    facility_code = st.session_state['facility_code']
+
+    # Map facility codes to Dropbox model paths
+    facility_model_paths = {
+        '3876': '/Work/McCall_Farms/McCall_Shared_Data/trained_model.joblib',
+        '7354': '/sage/trained_model.joblib',
+        '2381': '/scp/trained_model.joblib',
+    }
+
+    if facility_code not in facility_model_paths:
+        st.error(f"No model path configured for facility code: {facility_code}")
+        return
+
+    dropbox_model_path = facility_model_paths[facility_code]
+
+    # Initialize Dropbox client
+    dbx = dropbox_integration.initialize_dropbox()
+    if not dbx:
+        st.error("Failed to initialize Dropbox.")
+        return
 
     # Load the model if not in session state
     if 'trained_model' not in st.session_state:
-        trained_model = load_model(model_filename)
+        trained_model = load_model_from_dropbox(dbx, dropbox_model_path)
         if trained_model is not None:
             st.session_state['trained_model'] = trained_model
         else:
@@ -47,9 +77,9 @@ def run_process_optimizer(ml_data, configuration, model):
             return
     else:
         trained_model = st.session_state['trained_model']
-        
+
     # Get adjustable features by filtering the configuration DataFrame
-    adjustable_features = configuration[configuration['adjustability'] == 'Variable']['feature_name'].tolist()
+    adjustable_features = configuration[configuration['adjustability'] == 'variable']['feature_name'].tolist()
     if not adjustable_features:
         st.error("No adjustable features found in the configuration.")
         return
@@ -84,7 +114,7 @@ def run_process_optimizer(ml_data, configuration, model):
     if st.button("Run Optimization"):
         with st.spinner("Running optimization..."):
             result, optimized_target_value, prediction_std = optimize_process(
-                model,
+                trained_model,
                 ml_data,
                 adjustable_features,
                 fixed_features,
@@ -182,12 +212,14 @@ def predict_with_uncertainty(model, input_data):
     """
     Predict the target value and estimate uncertainty using the model.
     """
-    # For RandomForestRegressor, we can use the individual estimators
+    # For XGBoost, we can use DMatrix and get the prediction standard deviation
     try:
-        # Get predictions from all individual trees
-        tree_predictions = np.array([estimator.predict(pd.DataFrame([input_data]))[0] for estimator in model.estimators_])
-        prediction_mean = tree_predictions.mean()
-        prediction_std = tree_predictions.std()
+        # Convert input data to DMatrix
+        dmatrix = xgb.DMatrix(pd.DataFrame([input_data]))
+        # Predict using the model
+        prediction = model.predict(dmatrix)
+        prediction_mean = prediction[0]
+        prediction_std = 0  # XGBoost does not provide prediction uncertainty by default
         return prediction_mean, prediction_std
     except Exception as e:
         st.error(f"Error calculating prediction uncertainty: {e}")
