@@ -31,16 +31,6 @@ def save_model(model, model_filename):
     - model: The trained model object.
     - model_filename: The path to the file where the model will be saved.
     """
-# machine_learning.py
-
-def save_model(model, model_filename):
-    """
-    Save the trained model to a file and upload to Dropbox.
-
-    Parameters:
-    - model: The trained model object.
-    - model_filename: The path to the file where the model will be saved.
-    """
     try:
         # Save the model locally
         joblib.dump(model, model_filename)
@@ -201,8 +191,6 @@ def run_machine_learning_pipeline(ml_data, configuration, selected_target, progr
 
         # Step 3: Select Features from Correlated Groups
         status_text.text("Step 3/7: Selecting features from correlated groups...")
-        # Retrieve adjustable features from configuration
-        adjustable_features = list(configuration.get('adjustable_features', {}).keys())
         X, dropped_features = select_features_from_correlated_groups(X, correlated_groups, adjustable_features)
         current_step += 1
         progress_bar.progress(current_step / total_steps)
@@ -210,16 +198,19 @@ def run_machine_learning_pipeline(ml_data, configuration, selected_target, progr
         # Log the dropped features
         logs = log_dropped_features(dropped_features)
 
-        #Retrieve adjustable features from configuration
-        adjustable_features = configuration[configuration['adjustability' == 'variable']['feature_name'].tolist()
-                
+        # Retrieve adjustable features from configuration
+        adjustable_features = configuration[configuration['adjustability'] == 'variable']['feature_name'].tolist()
+
         # Step 4: Feature Selection
         status_text.text("Step 4/7: Performing feature selection...")
         selected_features, feature_ranking = perform_feature_selection(X, y)
         current_step += 1
         progress_bar.progress(current_step / total_steps)
 
-        #Identify adjustable features included in the model
+        # Store selected features
+        st.session_state['selected_features'] = selected_features
+
+        # Identify adjustable features included in the model
         adjustable_features_in_model = [feature for feature in adjustable_features if feature in selected_features]
         st.session_state['adjustable_features_in_model'] = adjustable_features_in_model
 
