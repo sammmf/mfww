@@ -5,10 +5,10 @@ from modules.machine_learning import run_machine_learning_tab
 # Import other modules as needed (e.g., data_query, process_optimizer)
 
 # Set the page configuration at the top of the script
-st.set_page_config(page_title="McCall Farms Dashboard", layout="wide")
+st.set_page_config(page_title="Wastewater Dashboard", layout="wide")
 
 def run_app():
-    st.title("Welcome to the McCall Farms Dashboard")
+    st.title("Welcome to the Wastewater Dashboard")
 
     # Prompt for 4-digit code
     code = st.text_input("Please enter your 4-digit access code:", max_chars=4, type='password')
