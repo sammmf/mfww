@@ -1,7 +1,11 @@
 import streamlit as st
+import pandas as pd
 from modules import dropbox_integration
 from modules.machine_learning import run_machine_learning_tab
 # Import other modules as needed (e.g., data_query, process_optimizer)
+
+# Set the page configuration at the top of the script
+st.set_page_config(page_title="McCall Farms Dashboard", layout="wide")
 
 def run_app():
     st.title("Welcome to the McCall Farms Dashboard")
@@ -11,14 +15,22 @@ def run_app():
 
     if st.button("Login"):
         if code in dropbox_integration.facility_codes:
+            # Store the facility code and set logged_in to True
             st.session_state['facility_code'] = code
+            st.session_state['logged_in'] = True
             st.success("Access granted.")
-            # Redirect to dashboard
-            st.experimental_rerun()
+            # Since the script reruns with each interaction, the next run will load the dashboard
         else:
             st.error("Invalid code. Please try again.")
 
 def run_dashboard():
+    # Add a logout button
+    if st.sidebar.button("Logout"):
+        # Clear session state and rerun the app
+        st.session_state.clear()
+        st.session_state['logged_in'] = False
+        st.experimental_rerun()
+
     # Initialize Dropbox client
     dbx = dropbox_integration.initialize_dropbox()
     if dbx is None:
@@ -92,8 +104,13 @@ def display_tabs():
         st.header("Process Optimizer")
         # Add process optimizer content here
 
+# Main application logic
 if __name__ == "__main__":
-    if 'facility_code' in st.session_state:
+    # Set up session state for 'logged_in' if not present
+    if 'logged_in' not in st.session_state:
+        st.session_state['logged_in'] = False
+
+    if st.session_state['logged_in']:
         run_dashboard()
     else:
         run_app()
