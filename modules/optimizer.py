@@ -41,6 +41,13 @@ def load_model_from_dropbox(dbx, dropbox_model_path):
 def run_process_optimizer(ml_data, configuration):
     st.header("Process Optimizer")
 
+    # **Debugging: Display the configuration DataFrame**
+    st.write("Configuration DataFrame:")
+    st.dataframe(configuration)
+
+    # **Debugging: Display unique values in 'adjustability' column**
+    st.write("Unique values in 'adjustability' column:", configuration['adjustability'].unique())
+
     # Get adjustable features by filtering the configuration DataFrame
     adjustable_features = configuration[configuration['adjustability'] == 'variable']['feature_name'].tolist()
     st.write("Adjustable Features:", adjustable_features)  # Debugging
@@ -285,10 +292,11 @@ def display_optimization_results(
         })
         st.table(fixed_df)
 
-        # Display optimized target feature value
+        # Display optimized target feature value with confidence interval
         st.subheader(f"Optimized {target_feature}")
-        st.write(f"Predicted {target_feature}: {optimized_target_value:.3f}")
-        st.write("Note: Prediction uncertainty estimation is not available.")
+        confidence_interval = 1.96 * prediction_std  # For approximately 95% confidence
+        st.write(f"Predicted {target_feature}: {optimized_target_value:.3f} ± {confidence_interval:.3f}")
+        st.write(f"Confidence Interval (95%): [{optimized_target_value - confidence_interval:.3f}, {optimized_target_value + confidence_interval:.3f}]")
 
         # Additional Metrics
         st.subheader("Optimization Metrics")
