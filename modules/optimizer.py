@@ -2,7 +2,7 @@
 
 import streamlit as st
 import pandas as pd
-from scipy.optimize import minimize
+from scipy.optimize import minimize, differential_evolution
 import numpy as np
 import xgboost as xgb
 import joblib
@@ -174,6 +174,8 @@ def get_bounds(configuration, adjustable_features):
         bounds.append((min_val, max_val))
     return bounds
 
+from scipy.optimize import differential_evolution, minimize
+
 def optimize_process(
     model,
     ml_data,
@@ -182,21 +184,13 @@ def optimize_process(
     target_feature,
     desired_target_value,
     bounds,
-    optimization_goal
+    optimization_goal,
+    selected_features
 ):
-    # Initial guess: mean of adjustable feature values
-    initial_guess = ml_data[adjustable_features].mean().values
-
     # Prepare fixed variables
     fixed_values = ml_data[fixed_features].iloc[-1]
 
-    # Get selected features from the model
-    selected_features = st.session_state.get('selected_features', [])
-    if not selected_features:
-        st.error("Selected features are not available.")
-        return None, None, None
-
-    # Prepare any remaining features required by the model
+    # Get remaining features
     remaining_features = [feature for feature in selected_features if feature not in adjustable_features and feature not in fixed_features]
     remaining_values = ml_data[remaining_features].iloc[-1]
 
@@ -221,26 +215,47 @@ def optimize_process(
         else:  # Reach Desired Value
             return (prediction - desired_target_value) ** 2  # Squared error
 
-    # Run optimization
+    # Run Differential Evolution
     try:
-        result = minimize(
+        # Global optimization with Differential Evolution
+        de_result = differential_evolution(
             objective_function,
-            initial_guess,
             bounds=bounds,
-            method='SLSQP',  # Sequential Least Squares Programming
-            options={'disp': True, 'maxiter': 1000}
+            strategy='best1bin',
+            maxiter=1000,
+            popsize=15,
+            tol=0.01,
+            mutation=(0.5, 1),
+            recombination=0.7,
+            disp=False
         )
 
-        # Get the optimized target value and prediction standard deviation
+        # Local optimization using the result from DE as the initial guess
+        local_result = minimize(
+            objective_function,
+            de_result.x,
+            bounds=bounds,
+            method='L-BFGS-B',  # You can also try 'SLSQP' or other methods
+            options={'disp': False, 'maxiter': 500}
+        )
+
+        # Decide which result to use based on the objective function value
+        if local_result.fun < de_result.fun:
+            final_result = local_result
+        else:
+            final_result = de_result
+
+        # Get the optimized target value
         optimized_input = pd.Series(index=selected_features, dtype=float)
-        optimized_input[adjustable_features] = result.x
+        optimized_input[adjustable_features] = final_result.x
         optimized_input[fixed_features] = fixed_values.values
         optimized_input[remaining_features] = remaining_values.values
 
-        # Get prediction and uncertainty
+        # Get prediction
         optimized_target_value, prediction_std = predict_with_uncertainty(model, optimized_input)
 
-        return result, optimized_target_value, prediction_std
+        return final_result, optimized_target_value, prediction_std
+
     except Exception as e:
         st.error(f"Optimization error: {e}")
         return None, None, None
