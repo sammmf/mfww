@@ -142,7 +142,8 @@ def run_process_optimizer(ml_data, configuration):
                 target_feature,
                 desired_target_value,
                 bounds,
-                optimization_goal
+                optimization_goal,
+                selected_features
             )
             if result is not None:
                 display_optimization_results(
