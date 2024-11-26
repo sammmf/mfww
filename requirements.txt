@@ -12,3 +12,4 @@ scipy
 flask
 firebase-admin
 joblib
+google-cloud-secret-manager
