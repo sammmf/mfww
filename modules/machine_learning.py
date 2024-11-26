@@ -102,6 +102,10 @@ def run_machine_learning_tab(ml_data, configuration):
             results = run_machine_learning_pipeline(
                 ml_data, configuration, selected_target, progress_bar, status_text
             )
+            if results is None:
+                st.error("Pipeline terminated due to errors.")
+                st.session_state['ml_pipeline_ran'] = False
+                return
             st.success("Machine learning pipeline completed.")
             st.session_state['ml_pipeline_ran'] = True
             st.session_state['ml_results'] = results
@@ -182,6 +186,13 @@ def run_machine_learning_pipeline(ml_data, configuration, selected_target, progr
         # Step 1: Preprocess Data
         status_text.text("Step 1/7: Preprocessing data...")
         X, y = preprocess_data_for_modeling(ml_data, selected_target)
+
+        # Check if preprocessing was successful
+        if X is None or y is None:
+            st.error("Preprocessing failed due to insufficient data after outlier removal.")
+            progress_bar.progress(1.0)
+            status_text.text("Pipeline terminated.")
+            return None 
         current_step += 1
         progress_bar.progress(current_step / total_steps)
 
@@ -269,11 +280,9 @@ def run_machine_learning_pipeline(ml_data, configuration, selected_target, progr
         logging.exception("An exception occured during the machine learning pipeline")
         raise e  # Re-raise the exception to be caught in the calling function
 
-# Rest of your function definitions at the module level (no indentation)
-
 def preprocess_data_for_modeling(ml_data, selected_target):
     """
-    Preprocess the data for modeling.
+    Preprocess the data for modeling, including handling missing values and outlier removal.
     """
     # Exclude future dates
     today = pd.Timestamp(datetime.today().date())
@@ -290,8 +299,25 @@ def preprocess_data_for_modeling(ml_data, selected_target):
     X = X.interpolate(method='linear', limit_direction='both').fillna(method='ffill').fillna(method='bfill')
     y = y.interpolate(method='linear', limit_direction='both').fillna(method='ffill').fillna(method='bfill')
 
-    return X, y
+    # Combine X and y for outlier detection
+    data = pd.concat([X, y], axis=1)
 
+    # Apply outlier filtering on the target variable
+    data_filtered = outlier_filtering.identify_outliers(
+        data, method='zscore', column=selected_target
+    )
+
+    # Split back into X and y
+    X_filtered = data_filtered[features]
+    y_filtered = data_filtered[selected_target]
+
+    # Check for sufficient data after outlier removal
+    MIN_SAMPLES = 50  # Adjust this threshold based on your requirements
+    if len(X_filtered) < MIN_SAMPLES:
+        st.error("Not enough data after outlier removal.")
+        return None, None
+
+    return X_filtered, y_filtered
 def get_correlated_feature_groups(X, threshold=0.8):
     """
     Identify groups of highly correlated features without overlapping columns.
