@@ -7,3 +7,5 @@ steps:
     - '.'
 images:
 - 'gcr.io/fleet-parity-442919-u6/ml-training-image:$SHORT_SHA'
+options:
+  logging: CLOUD_LOGGING_ONLY 
