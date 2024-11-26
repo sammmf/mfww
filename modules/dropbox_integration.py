@@ -6,16 +6,6 @@ import time
 import requests
 from modules import firebase_integration
 from dropbox.oauth import DropboxOAuth2FlowNoRedirect
-from google.cloud import secretmanager
-import os
-
-def get_secret(secret_id):
-    client = secretmanager.SecretManagerServiceClient()
-    project_id = os.environ['PROJECT_ID']
-    name = f"projects/{project_id}/secrets/{secret_id}/versions/latest"
-    response = client.access_secret_version(name=name)
-    secret_value = response.payload.data.decode('UTF-8')
-    return secret_value
     
 def initialize_dropbox():
     """
