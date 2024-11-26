@@ -3,7 +3,7 @@ steps:
   args:
     - 'build'
     - '-t'
-    - 'gcr.io/$PROJECT_ID/ml-training-image:$SHORT_SHA'
+    - 'gcr.io/fleet-parity-442919-u6/ml-training-image:$SHORT_SHA'
     - '.'
 images:
-- 'gcr.io/$PROJECT_ID/ml-training-image:$SHORT_SHA'
+- 'gcr.io/fleet-parity-442919-u6/ml-training-image:$SHORT_SHA'
